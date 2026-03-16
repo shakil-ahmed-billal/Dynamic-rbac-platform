@@ -1,0 +1,978 @@
+
+RBAC SYSTEM
+Full-Stack Technical Documentation
+Dynamic Role-Based Access Control  ·  v2.0
+─────────────────────────────────────────
+Document Details
+Field
+Value
+Project Name
+RBAC System — Dynamic Permissions
+Version
+2.0
+Document Type
+Full-Stack Technical Specification & Documentation
+Date
+March 2026
+Status
+Job Task Submission
+Confidentiality
+Confidential — Digital Pylot
+
+Table of Contents
+
+1.  Project Overview  ....  3
+2.  Technical Stack  ....  4
+3.  Data Models  ....  5
+4.  Folder Structure  ....  8
+5.  Project Workflow & Architecture  ....  10
+6.  Authentication & Authorization Flow  ....  11
+7.  Permission System Design  ....  12
+8.  Core Modules & Features  ....  13
+9.  API Integration & Contracts  ....  14
+10.  Security Considerations  ....  16
+11.  Performance Considerations  ....  17
+12.  Error Handling & Debugging  ....  18
+13.  Testing Approach  ....  19
+14.  Future Enhancements  ....  20
+15.  Missing Details & Recommendations  ....  21
+
+1. Project Overview
+1.1 What Is This Project?
+The RBAC (Role-Based Access Control) System is a multi-role, full-stack web application where access to every feature, page, and action is governed entirely by a dynamic permission system. Unlike traditional hard-coded role systems, this platform allows Admins and Managers to configure user access at runtime through a visual permission editor — no developer changes required.
+
+The system is built as a single web application whose interface assembles itself at runtime based on the resolved permission set of the authenticated user.
+
+1.2 The Problem Being Solved
+Without This System
+With This System
+Role access is hard-coded in the codebase
+Any user can be granted access to any feature
+Adding a new permission requires a developer
+Admins and Managers configure permissions via UI
+Agents are permanently locked out of certain pages
+Agents see exactly what their Manager allows
+No visibility into who did what and when
+Full audit trail of every action in the system
+Managers cannot customise their team's capabilities
+No code changes needed to restructure access
+
+1.3 User Roles
+The system defines four distinct user roles, each with a specific scope of authority:
+
+Role
+Type of User
+System Responsibility
+Admin
+Business Owner / IT Admin
+Complete control. Manages all users, assigns managers, configures the entire permission structure, and views full activity overview.
+Manager
+Team Lead / Department Head
+Creates and manages their team (agents and customers). Controls which features each agent can use. Can suspend/ban users within their scope.
+Agent
+Staff / Operator
+Works within modules their Manager has unlocked. Handles leads, tasks, reports — whatever they have been granted access to.
+Customer
+End Client / User
+Accesses their own self-service portal. Views tickets, orders, or interactions. Cannot see internal operations unless explicitly granted.
+
+1.4 Core Architectural Principle
+Every page in the application has exactly one required permission atom. If the user holds that atom, the page is accessible. If not, they are redirected to a 403 Forbidden screen. The user's role label alone does not determine access.
+
+⚠ Note: This means a Manager can grant an Agent access to any page — as long as the Manager holds that permission themselves. The system enforces a grant ceiling: you cannot give more than you have.
+
+2. Technical Stack
+2.1 Stack Overview
+Layer
+Technology
+Rationale
+Frontend
+Next.js 14 (App Router) + TypeScript
+Fixed requirement. App Router enables server-side permission checks via middleware.ts before a page renders.
+Backend
+NestJS (Preferred) or any REST API framework
+Flexible. NestJS recommended for its Guard system. Must deliver the REST API contract defined in the spec.
+Database
+PostgreSQL (Recommended)
+Flexible. Core entities: users, roles, permissions, role_permissions, user_permissions, audit_logs.
+Auth
+JWT + Refresh Token (httpOnly cookie)
+Access token (15 min, in memory). Refresh token (7 days, httpOnly cookie). No localStorage for tokens.
+Styling
+Figma-first (implementation must match Figma)
+All UI must match the provided Figma file. Figma-first development workflow is enforced.
+Deployment
+Developer's choice (must provide live URL)
+GitHub repo (frontend + backend) with meaningful commits + live deployment link required.
+
+2.2 Frontend Details
+Next.js 14 App Router
+	•	File-based routing using the app/ directory
+	•	Server Components (RSC) for initial page load performance
+	•	middleware.ts intercepts every route and validates the user's permission atom before rendering
+	•	TypeScript enforced throughout for type safety on permissions, user data, and API responses
+
+State Management Recommendations
+	•	Zustand or React Context for global auth state
+	•	TanStack Query (React Query) for server state, caching, and refetching
+	•	Permission atoms stored in memory after login — never in localStorage
+
+2.3 Backend Details
+NestJS Architecture
+	•	Guards — enforces permission checks at the controller level
+	•	Interceptors — logs requests for audit trail
+	•	Pipes — validates incoming DTOs
+	•	Decorators — custom @RequiresPermission() decorator for route-level access control
+
+Key Backend Concerns
+	•	Role hierarchy must be enforced server-side, not just client-side
+	•	Grant ceiling validation: when granting permissions to a user, the granting user's own permissions must be validated
+	•	Session blacklist for logout/token invalidation
+	•	Rate limiting on login endpoint to prevent brute-force attacks
+
+3. Data Models
+3.1 Core Entity Overview
+The database schema consists of six primary entities. PostgreSQL is recommended for its robust support of foreign key constraints, JSON columns for metadata, and indexing capabilities.
+
+3.1.1 users
+Column
+Type
+Constraints
+Description
+id
+UUID
+PK, NOT NULL
+Unique user identifier
+email
+VARCHAR(255)
+UNIQUE, NOT NULL
+User login email
+password_hash
+VARCHAR(255)
+NOT NULL
+Bcrypt hashed password
+role_id
+UUID
+FK → roles.id
+Base role assignment
+manager_id
+UUID
+FK → users.id, nullable
+Reference to managing user
+status
+ENUM
+NOT NULL, DEFAULT active
+active | suspended | banned
+first_name
+VARCHAR(100)
+NOT NULL
+User's first name
+last_name
+VARCHAR(100)
+NOT NULL
+User's last name
+created_at
+TIMESTAMP
+NOT NULL, DEFAULT NOW()
+Account creation timestamp
+updated_at
+TIMESTAMP
+NOT NULL, DEFAULT NOW()
+Last update timestamp
+last_login_at
+TIMESTAMP
+nullable
+Last successful login
+
+3.1.2 roles
+Column
+Type
+Constraints
+Description
+id
+UUID
+PK, NOT NULL
+Unique role identifier
+name
+VARCHAR(50)
+UNIQUE, NOT NULL
+admin | manager | agent | customer
+description
+TEXT
+nullable
+Human-readable role description
+hierarchy_level
+INTEGER
+NOT NULL
+Lower number = higher privilege (1=Admin)
+created_at
+TIMESTAMP
+NOT NULL
+Creation timestamp
+
+3.1.3 permissions
+Column
+Type
+Constraints
+Description
+id
+UUID
+PK, NOT NULL
+Unique permission identifier
+atom
+VARCHAR(100)
+UNIQUE, NOT NULL
+e.g. reports.view, users.create
+module
+VARCHAR(50)
+NOT NULL
+Grouping: users, leads, tasks, reports, etc.
+description
+TEXT
+nullable
+Human-readable description of this permission
+created_at
+TIMESTAMP
+NOT NULL
+Creation timestamp
+
+3.1.4 role_permissions
+Default permissions assigned to a role (base set). These are the starting permissions granted to a user when they are assigned a role.
+Column
+Type
+Constraints
+Description
+role_id
+UUID
+FK → roles.id, NOT NULL
+Role reference
+permission_id
+UUID
+FK → permissions.id, NOT NULL
+Permission reference
+created_at
+TIMESTAMP
+NOT NULL
+When this default was set
+
+3.1.5 user_permissions
+Individual permission overrides for a specific user. This table enables the dynamic permission system — additions or revocations on top of the role baseline.
+Column
+Type
+Constraints
+Description
+id
+UUID
+PK, NOT NULL
+Unique override record
+user_id
+UUID
+FK → users.id, NOT NULL
+Target user
+permission_id
+UUID
+FK → permissions.id
+Permission being granted/revoked
+granted
+BOOLEAN
+NOT NULL, DEFAULT true
+true = granted, false = explicitly revoked
+granted_by
+UUID
+FK → users.id, NOT NULL
+User who configured this permission
+created_at
+TIMESTAMP
+NOT NULL
+Timestamp of this change
+
+3.1.6 audit_logs
+Append-only log of every admin/manager action. Rows must never be updated or deleted.
+Column
+Type
+Constraints
+Description
+id
+UUID
+PK, NOT NULL
+Unique log entry ID
+actor_id
+UUID
+FK → users.id
+User who performed the action
+target_id
+UUID
+nullable
+User/entity affected (if applicable)
+action
+VARCHAR(100)
+NOT NULL
+e.g. USER_CREATED, PERMISSION_GRANTED
+module
+VARCHAR(50)
+NOT NULL
+Which module the action occurred in
+metadata
+JSONB
+nullable
+Additional action context (before/after state)
+ip_address
+VARCHAR(45)
+nullable
+Actor's IP address
+created_at
+TIMESTAMP
+NOT NULL, DEFAULT NOW()
+Immutable action timestamp
+
+3.2 Entity Relationships
+	•	One user belongs to one role (role_id FK)
+	•	One user may have one manager (manager_id self-referencing FK)
+	•	Roles have default permissions via role_permissions (many-to-many)
+	•	Users have individual permission overrides via user_permissions (many-to-many with granted flag)
+	•	Every significant action writes an immutable row to audit_logs
+
+⚠ Note: The resolved permissions for a user = role defaults (role_permissions) merged with individual overrides (user_permissions). When granted=false in user_permissions, the permission is explicitly revoked even if the role grants it.
+
+4. Folder Structure
+4.1 Frontend (Next.js 14 App Router)
+frontend/
+├── app/
+│   ├── (auth)/
+│   │   ├── login/
+│   │   │   └── page.tsx            # Login page (Figma-matched)
+│   │   └── layout.tsx
+│   ├── (dashboard)/
+│   │   ├── layout.tsx              # Shared dashboard shell + dynamic sidebar
+│   │   ├── dashboard/page.tsx
+│   │   ├── users/page.tsx          # Requires: users.view
+│   │   ├── leads/page.tsx          # Requires: leads.view
+│   │   ├── tasks/page.tsx          # Requires: tasks.view
+│   │   ├── reports/page.tsx        # Requires: reports.view
+│   │   ├── audit-log/page.tsx      # Requires: audit.view
+│   │   ├── settings/page.tsx       # Requires: settings.view
+│   │   └── customer-portal/page.tsx # Requires: portal.view
+│   ├── 403/page.tsx                # Forbidden page
+│   └── layout.tsx                  # Root layout
+├── middleware.ts                   # Route permission guard (runs on edge)
+├── components/
+│   ├── ui/                         # Base design system components
+│   ├── layout/
+│   │   ├── Sidebar.tsx             # Dynamic nav from permission set
+│   │   └── Header.tsx
+│   ├── permissions/
+│   │   ├── PermissionEditor.tsx    # Visual toggle editor
+│   │   └── PermissionGate.tsx      # Conditional render wrapper
+│   └── users/
+│       ├── UserTable.tsx
+│       └── UserForm.tsx
+├── hooks/
+│   ├── useAuth.ts
+│   ├── usePermissions.ts
+│   └── useAuditLog.ts
+├── lib/
+│   ├── api.ts                      # Axios/fetch instance + interceptors
+│   ├── auth.ts                     # Token refresh logic
+│   └── permissions.ts              # Permission resolver utilities
+├── store/
+│   └── authStore.ts                # Zustand auth + permissions store
+├── types/
+│   ├── user.ts
+│   ├── permission.ts
+│   └── api.ts
+└── constants/
+    └── permissions.ts              # All permission atom strings
+
+4.2 Backend (NestJS)
+backend/
+├── src/
+│   ├── app.module.ts
+│   ├── main.ts                     # Bootstrap, global pipes, guards, interceptors
+│   ├── auth/
+│   │   ├── auth.module.ts
+│   │   ├── auth.controller.ts      # POST /auth/login, /auth/logout, /auth/refresh
+│   │   ├── auth.service.ts
+│   │   ├── jwt.strategy.ts
+│   │   ├── refresh.strategy.ts
+│   │   └── guards/
+│   │       ├── jwt-auth.guard.ts
+│   │       └── permission.guard.ts # Custom guard for permission atoms
+│   ├── users/
+│   │   ├── users.module.ts
+│   │   ├── users.controller.ts
+│   │   ├── users.service.ts
+│   │   ├── dto/
+│   │   │   ├── create-user.dto.ts
+│   │   │   └── update-user.dto.ts
+│   │   └── entities/user.entity.ts
+│   ├── permissions/
+│   │   ├── permissions.module.ts
+│   │   ├── permissions.controller.ts
+│   │   ├── permissions.service.ts  # Resolves effective permissions
+│   │   └── decorators/
+│   │       └── require-permission.decorator.ts
+│   ├── roles/
+│   │   └── roles.service.ts
+│   ├── audit/
+│   │   ├── audit.module.ts
+│   │   ├── audit.service.ts
+│   │   └── audit-log.entity.ts
+│   ├── common/
+│   │   ├── interceptors/audit-log.interceptor.ts
+│   │   ├── filters/http-exception.filter.ts
+│   │   └── middleware/rate-limit.middleware.ts
+│   └── database/
+│       └── migrations/             # TypeORM or Prisma migration files
+├── test/
+│   ├── unit/
+│   └── e2e/
+└── package.json
+
+5. Project Workflow & Architecture
+5.1 Request Lifecycle
+Every user request passes through the following stages:
+
+Stage
+Layer
+What Happens
+1. Route Request
+Browser / Client
+User navigates to a URL or performs an action
+2. Middleware Check
+Next.js middleware.ts (Edge)
+Reads JWT from memory, resolves permission atoms, validates the required atom for the route
+3. Redirect or Render
+Next.js Server
+If atom present: renders the page. If not: redirects to /403
+4. API Call
+Frontend → Backend
+Page/component calls the REST API with Bearer JWT in Authorization header
+5. Backend Guard
+NestJS PermissionGuard
+Validates JWT, resolves permissions server-side, checks RequiresPermission decorator
+6. Business Logic
+NestJS Service Layer
+Executes the operation, applies grant ceiling validation for permission changes
+7. Audit Log
+Audit Interceptor
+Writes an immutable audit_log row for every state-changing operation
+8. Response
+Backend → Frontend
+Returns data or error response. Frontend updates UI accordingly
+
+5.2 Dynamic Sidebar Assembly
+The sidebar is never hard-coded per role. On login, the frontend resolves the user's full permission set and filters the sidebar navigation items against it. Only items whose required atom is present in the permission set are rendered.
+
+5.3 Permission Resolution Algorithm
+Effective permissions for a user are computed as follows:
+	•	Start with the default permissions for the user's role (from role_permissions)
+	•	Apply user_permissions overrides: if granted=true, add the permission; if granted=false, remove it
+	•	The resulting set is the user's effective permissions
+	•	This resolved set is returned at login and cached in memory client-side
+⚠ Note: Grant Ceiling: When User A tries to grant permission P to User B, the backend must verify that User A holds permission P themselves. If not, the operation is rejected with HTTP 403.
+
+6. Authentication & Authorization Flow
+6.1 Login Flow
+Step
+Action
+Details
+1
+POST /auth/login
+Client sends email + password
+2
+Validate credentials
+Backend checks password_hash with bcrypt, verifies account status
+3
+Issue tokens
+Access Token (JWT, 15 min) returned in response body. Refresh Token (JWT, 7 days) set as httpOnly cookie
+4
+Store access token
+Frontend stores access token in memory (Zustand/React state) — never localStorage
+5
+Resolve permissions
+Backend resolves effective permissions and returns them with the login response
+6
+Hydrate client
+Frontend stores user + permissions in auth store
+
+6.2 Token Refresh Flow
+	•	On 401 response: frontend calls POST /auth/refresh with the httpOnly cookie
+	•	Backend validates the refresh token, checks it against the session blacklist
+	•	Issues new access token, returns in response body
+	•	Frontend retries the original request with the new token
+
+6.3 Logout
+	•	Client calls POST /auth/logout
+	•	Backend adds the refresh token to the session blacklist (in-memory or Redis)
+	•	Client clears the access token from memory
+	•	httpOnly cookie is cleared by the server
+
+6.4 Security Implementation Details
+Concern
+Implementation
+Brute-force protection
+Rate limiting on POST /auth/login (e.g. 5 attempts per 15 minutes per IP)
+Token storage
+Access token in JS memory only. Refresh token in httpOnly cookie (not readable by JS)
+Session invalidation
+Refresh token blacklist checked on every /auth/refresh call
+CSRF protection
+SameSite=Strict or SameSite=Lax on the refresh token cookie
+Password hashing
+Bcrypt with salt rounds >= 12
+Account lockout
+status field (suspended / banned) checked on every login attempt
+
+7. Permission System Design
+7.1 Permission Atoms
+Each feature in the system maps to exactly one permission atom string. Atoms use dot notation: module.action. Examples:
+
+Module
+Permission Atom
+Description
+Dashboard
+dashboard.view
+Access the main dashboard
+Users
+users.view
+View user list
+Users
+users.create
+Create new users
+Users
+users.edit
+Edit existing users
+Users
+users.suspend
+Suspend a user account
+Users
+users.ban
+Permanently ban a user
+Leads
+leads.view
+View leads module
+Leads
+leads.create
+Create new leads
+Tasks
+tasks.view
+View tasks module
+Tasks
+tasks.manage
+Create, edit, and complete tasks
+Reports
+reports.view
+View reports module
+Reports
+reports.export
+Export report data
+Audit Log
+audit.view
+View the audit trail
+Settings
+settings.view
+View system settings
+Settings
+settings.edit
+Edit system settings
+Permissions
+permissions.manage
+Grant/revoke permissions for users
+Customer Portal
+portal.view
+Access the customer portal
+
+7.2 Visual Permission Editor
+The permission management UI presents permissions grouped by module as a toggle grid. Each toggle reflects the user's current effective permission state. Toggles the granting user does not hold are disabled — enforcing the grant ceiling in the UI.
+
+⚠ Note: The visual editor must also enforce the grant ceiling server-side. A client-side toggle is not enough — the backend PermissionGuard must re-validate the granting user's permissions on every permission change request.
+
+8. Core Modules & Features
+Module
+Key Features
+Required Permission Atom
+Dashboard
+Overview metrics, quick stats, activity feed
+dashboard.view
+User Management
+List, create, edit, suspend, ban users. View user details and permission overrides.
+users.view
+Permission Editor
+Visual toggle grid to grant/revoke permissions. Grouped by module. Grant ceiling enforced.
+permissions.manage
+Leads
+Lead list, creation, assignment, status tracking
+leads.view
+Tasks
+Task board or list, create, assign, complete tasks
+tasks.view
+Reports
+Data reports, filters, optionally exportable
+reports.view
+Audit Log
+Append-only, searchable history of all admin/manager actions. Never editable.
+audit.view
+Settings
+System configuration. Only accessible by high-privilege users.
+settings.view
+Customer Portal
+Self-service portal for customers. Separate view scoped to the customer's own data.
+portal.view
+403 Page
+Shown when user lacks the required permission atom for the requested route. Non-branded error page.
+N/A
+
+9. API Integration & Contracts
+9.1 Authentication Endpoints
+Method
+Endpoint
+Auth Required
+Description
+POST
+/auth/login
+No
+Authenticate user, return access token + set refresh cookie
+POST
+/auth/logout
+Yes
+Blacklist refresh token, clear cookie
+POST
+/auth/refresh
+Cookie
+Issue new access token using httpOnly refresh cookie
+GET
+/auth/me
+Yes
+Return current user profile + resolved permissions
+
+9.2 User Management Endpoints
+Method
+Endpoint
+Permission Atom
+Description
+GET
+/users
+users.view
+List all users (filtered by manager scope for Managers)
+POST
+/users
+users.create
+Create a new user
+GET
+/users/:id
+users.view
+Get user details
+PATCH
+/users/:id
+users.edit
+Update user information
+PATCH
+/users/:id/suspend
+users.suspend
+Suspend a user account
+PATCH
+/users/:id/ban
+users.ban
+Permanently ban a user
+DELETE
+/users/:id
+users.delete
+Delete a user (Admin only)
+
+9.3 Permission Endpoints
+Method
+Endpoint
+Permission Atom
+Description
+GET
+/permissions
+permissions.manage
+List all available permission atoms
+GET
+/users/:id/permissions
+permissions.manage
+Get a user's resolved permission set
+PUT
+/users/:id/permissions
+permissions.manage
+Update user permission overrides (with grant ceiling validation)
+
+9.4 Audit Log Endpoints
+Method
+Endpoint
+Permission Atom
+Description
+GET
+/audit-logs
+audit.view
+Paginated audit log with filters (actor, action, date range)
+GET
+/audit-logs/:id
+audit.view
+Get a specific audit log entry
+
+9.5 Standard API Response Format
+// Success Response
+{
+  "success": true,
+  "data": { ... },
+  "meta": { "page": 1, "total": 100 }  // for paginated responses
+}
+
+// Error Response
+{
+  "success": false,
+  "error": {
+    "code": "PERMISSION_DENIED",
+    "message": "You do not have permission to perform this action",
+    "statusCode": 403
+  }
+}
+⚠ Note: All permission-denied responses from the API must use HTTP 403. Token expiry must use HTTP 401. Validation errors must use HTTP 422.
+
+10. Security Considerations
+10.1 Authentication Security
+	•	JWT access token stored in JavaScript memory only (never localStorage or sessionStorage)
+	•	Refresh token stored in httpOnly, Secure, SameSite=Strict cookie
+	•	Access token expiry: 15 minutes. Refresh token expiry: 7 days
+	•	Token blacklist for invalidated refresh tokens (Redis recommended for production)
+	•	Bcrypt password hashing with minimum 12 salt rounds
+
+10.2 Authorization Security
+	•	Every API route validates the user's permission atom server-side via NestJS PermissionGuard
+	•	Client-side permission checks (sidebar, disabled buttons) are convenience only — never relied on for security
+	•	Grant ceiling enforced server-side on every permission change operation
+	•	Manager scope: Managers can only affect users within their own team (enforced via manager_id relationship)
+
+10.3 Input Validation & Protection
+	•	All incoming DTOs validated with class-validator in NestJS
+	•	SQL injection protection via parameterised queries (TypeORM/Prisma)
+	•	XSS protection via React's default output escaping
+	•	CORS configured to allow only the frontend origin
+	•	Rate limiting on authentication endpoints (minimum 5 req / 15 min per IP)
+
+10.4 Audit Integrity
+	•	audit_logs table is append-only — no UPDATE or DELETE operations permitted
+	•	Database-level constraints or triggers can enforce immutability
+	•	IP address logged with each action for traceability
+⚠ Note: Missing from spec: The specification does not define data retention policy for audit logs or GDPR/data deletion requirements. These must be clarified before production deployment.
+
+11. Performance Considerations
+11.1 Database
+	•	Index users.email (unique, used in every login query)
+	•	Index user_permissions.user_id (resolved on every authenticated request)
+	•	Index audit_logs.actor_id and audit_logs.created_at (filtered in audit log views)
+	•	Index users.manager_id (used in scope-filtering queries)
+	•	Use EXPLAIN ANALYZE to profile slow queries before production
+
+11.2 Permission Resolution Caching
+	•	Resolved permissions returned at login and cached in client memory
+	•	Cache invalidation: re-fetch /auth/me after any permission change affecting the current user
+	•	Server-side: consider Redis caching of resolved permission sets with TTL aligned to access token expiry
+
+11.3 Frontend Performance
+	•	Next.js Server Components for initial page HTML — reduces client JS bundle
+	•	TanStack Query for client-side data caching and stale-while-revalidate patterns
+	•	Permission gate components use memoization to prevent unnecessary re-renders
+	•	Audit log and user list views must be paginated — never load full datasets
+⚠ Note: Missing from spec: No mention of pagination defaults or page size limits. Recommend default page size of 25 with configurable maximum of 100.
+
+12. Error Handling & Debugging
+12.1 Backend Error Handling
+Scenario
+HTTP Status
+Error Code
+Action
+Invalid credentials
+401
+INVALID_CREDENTIALS
+Do not specify which field is wrong (security)
+Expired access token
+401
+TOKEN_EXPIRED
+Client should trigger token refresh
+Invalid/blacklisted token
+401
+TOKEN_INVALID
+Client should redirect to login
+Permission denied
+403
+PERMISSION_DENIED
+Return clear message, log the attempt
+Grant ceiling violation
+403
+GRANT_CEILING_EXCEEDED
+Prevent the permission assignment
+Resource not found
+404
+RESOURCE_NOT_FOUND
+Generic not found response
+Validation error
+422
+VALIDATION_ERROR
+Return field-level error details
+Rate limit exceeded
+429
+RATE_LIMIT_EXCEEDED
+Include Retry-After header
+Server error
+500
+INTERNAL_ERROR
+Log full stack trace, return generic message to client
+
+12.2 Frontend Error Handling
+	•	Global API interceptor catches 401 responses and triggers token refresh automatically
+	•	401 after failed refresh: clear auth state, redirect to login
+	•	403 responses: show permission-denied toast and optionally redirect to /403
+	•	Network errors: show retry UI with exponential backoff (TanStack Query handles this)
+	•	Form validation: use react-hook-form + zod for client-side validation before API calls
+
+12.3 Debugging Strategies
+Backend
+	•	NestJS Logger for structured logging with log levels (debug, warn, error)
+	•	Audit interceptor logs every incoming request with user ID, endpoint, and timestamp
+	•	Correlation ID header (X-Request-ID) propagated through the request for distributed tracing
+
+Frontend
+	•	React DevTools + Zustand DevTools for inspecting auth and permission state
+	•	TanStack Query DevTools for inspecting API cache state
+	•	Network tab: all API requests should include the correlation ID for tracing
+
+13. Testing Approach
+13.1 Backend Testing (NestJS / Jest)
+Test Type
+What to Test
+Tool
+Unit Tests
+Permission resolution logic, grant ceiling validation, password hashing, token generation
+Jest
+Integration Tests
+Auth endpoints (login, refresh, logout), user CRUD, permission CRUD
+Jest + Supertest
+Guard Tests
+JwtAuthGuard and PermissionGuard reject/allow correctly for each scenario
+Jest
+Database Tests
+Entity relations, audit log immutability, user permission overrides
+Jest + test DB
+
+13.2 Frontend Testing
+Test Type
+What to Test
+Tool
+Unit Tests
+Permission resolution utilities, sidebar filter logic, form validation schemas
+Jest + React Testing Library
+Component Tests
+PermissionGate renders/hides content correctly, PermissionEditor toggle state
+React Testing Library
+Middleware Tests
+Next.js middleware correctly allows/blocks routes based on permission atoms
+Jest
+E2E Tests
+Full login flow, permission granting, route access, 403 redirect
+Playwright or Cypress
+
+13.3 Critical Test Scenarios
+	•	Login with correct credentials → receives access token and resolved permissions
+	•	Login with incorrect credentials → 401, no token issued
+	•	Access a page with the required atom → renders correctly
+	•	Access a page without the required atom → redirects to /403
+	•	Manager grants permission they hold → succeeds
+	•	Manager grants permission they do NOT hold → 403 GRANT_CEILING_EXCEEDED
+	•	Access token expires → refresh succeeds, original request retried
+	•	Refresh token blacklisted → 401, user redirected to login
+	•	Suspended user attempts login → 401 with account status message
+
+14. Future Enhancements
+Enhancement
+Priority
+Description
+Permission Groups / Templates
+High
+Create named permission templates (e.g. 'Senior Agent') that can be applied to multiple users at once
+Two-Factor Authentication (2FA)
+High
+TOTP or email-based 2FA for Admin and Manager accounts
+Real-time Audit Notifications
+Medium
+WebSocket push notifications for high-priority audit events (e.g. account bans)
+Bulk Permission Management
+Medium
+Select multiple users and apply permission changes in bulk
+Permission Change Approval Workflow
+Medium
+Require a second Admin to approve high-privilege permission grants
+API Key Authentication
+Medium
+Separate API key system for integrations and third-party access
+Multi-tenancy
+Low
+Isolate Admins, Managers, and Agents into separate tenant workspaces
+Activity Dashboard
+Low
+Real-time metrics on active sessions, recent actions, and permission utilisation
+Export Audit Logs
+Low
+CSV/PDF export of filtered audit log for compliance reporting
+SSO Integration
+Low
+OAuth2 / SAML integration with corporate identity providers
+
+15. Missing Details & Recommendations
+15.1 Items Not Addressed in the Specification
+⚠ Note: The following topics are missing from the provided specification and should be clarified with the client (Digital Pylot) before or during development.
+
+#
+Missing Detail
+Recommendation
+1
+Figma and Prototype Links
+The specification references a Figma file and prototype link but does not include the actual URLs. These must be shared with the developer for UI implementation. Without them, pixel-perfect matching is not possible.
+2
+Password Policy
+No password strength requirements defined. Recommend: minimum 8 characters, 1 uppercase, 1 number, 1 special character.
+3
+Email Notifications
+No mention of email notifications for account creation, password reset, or permission changes. A reset password flow is missing entirely.
+4
+Customer Portal Scope
+The Customer Portal is listed as in-scope but has minimal description. The entities a customer can view (tickets, orders, interactions) are not specified.
+5
+Manager's Own Permissions
+It is not stated whether a Manager can modify their own permissions. Recommendation: Managers cannot elevate their own permissions — only an Admin can do this.
+6
+Pagination Standards
+No default page sizes or cursor/offset pagination strategy defined. Recommend 25 items per page as default with offset pagination.
+7
+Data Retention Policy
+No specification for how long audit logs are retained. GDPR right-to-erasure conflicts with append-only audit logs and must be resolved.
+8
+File/Media Uploads
+No mention of file upload capability (e.g. profile pictures, lead attachments). Should be confirmed as out of scope.
+9
+Deployment Environment
+Only a 'live deployment link' is mentioned. No specification of hosting environment, environment variables structure, CI/CD pipeline, or secrets management.
+10
+Internationalisation (i18n)
+No mention of multi-language support. If the platform will be used in multiple locales, i18n must be considered from the start.
+11
+Accessibility (a11y)
+No accessibility requirements stated. WCAG 2.1 AA compliance is recommended for a professional product.
+12
+Mobile Responsiveness Detail
+The spec states 'fully responsive across all devices' but does not define breakpoints or mobile-specific UX patterns (e.g. collapsed sidebar).
+
+15.2 Development Timeline Note
+The specification states a 24-hour completion requirement. Given the scope (authentication system, dynamic RBAC, visual permission editor, 8+ modules, full audit trail, Figma-matched UI, responsive design, and live deployment), this is an extremely aggressive timeline. The following prioritisation is recommended:
+
+Priority
+Features to Deliver
+Must Have (Hours 0–18)
+Auth (login/logout/refresh), dynamic permission routing middleware, user CRUD, permission editor, dynamic sidebar, 403 page, basic module stubs
+Should Have (Hours 18–22)
+Audit log view, dashboard metrics, customer portal stub, full responsive design
+Nice to Have (Hours 22–24)
+Advanced module features (leads detail, task management), animations, edge case handling
+
+End of Document

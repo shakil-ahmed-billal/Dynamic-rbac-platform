@@ -109,20 +109,34 @@ export const checkAuth = (options: CheckAuthOptions = {}) =>
         }
       }
 
-      // Permission check
+      // Permission check — using effective permissions (role defaults + user-level overrides)
       if (options.permissions && options.permissions.length > 0) {
-        // Collect all user permissions: { module: string, action: string }[]
-        const userPermissions = user.userRoles.flatMap((ur: any) =>
-          ur.role.rolePermissions.map((rp: any) => ({
-            module: rp.permission.module.name,
-            action: rp.permission.action,
-          })),
+        // Role-based permissions
+        const rolePermissionsMap = new Map<string, boolean>();
+        user.userRoles.flatMap((ur: any) =>
+          ur.role.rolePermissions.forEach((rp: any) => {
+            const key = `${rp.permission.module.name}.${rp.permission.action}`;
+            rolePermissionsMap.set(key, true);
+          }),
         );
 
+        // Apply user-specific overrides
+        const userOverrides = await prisma.userPermission.findMany({
+          where: { userId: user.id },
+          include: { permission: { include: { module: true } } },
+        });
+
+        userOverrides.forEach((override: any) => {
+          const key = `${override.permission.module.name}.${override.permission.action}`;
+          if (override.granted) {
+            rolePermissionsMap.set(key, true);
+          } else {
+            rolePermissionsMap.delete(key);
+          }
+        });
+
         const hasAllPermissions = options.permissions.every((required) =>
-          userPermissions.some(
-            (up: any) => up.module === required.module && up.action === required.action,
-          ),
+          rolePermissionsMap.has(`${required.module}.${required.action}`),
         );
 
         if (!hasAllPermissions) {

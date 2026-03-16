@@ -6,6 +6,8 @@ import { PermissionRoutes } from '../modules/permission/permission.route';
 import { SystemModuleRoutes } from '../modules/systemModule/systemModule.route';
 import { AuditLogRoutes } from '../modules/auditLog/auditLog.route';
 import { AdminRoutes } from '../modules/admin/admin.route';
+import { UserPermissionRoutes } from '../modules/permission/userPermission.route';
+
 
 const router = Router();
 
@@ -38,6 +40,11 @@ const moduleRoutes = [
     path: '/admin',
     route: AdminRoutes,
   },
+  {
+    path: '/user-permissions',
+    route: UserPermissionRoutes,
+  },
+
 ];
 
 moduleRoutes.forEach((route) => router.use(route.path, route.route));

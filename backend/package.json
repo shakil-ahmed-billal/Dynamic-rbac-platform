@@ -12,6 +12,7 @@
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
     "prisma:studio": "prisma studio",
+    "seed": "tsx prisma/seed.ts",
     "setup": "pnpm install && pnpm add @prisma/adapter-pg pg && pnpm add -D @types/pg && pnpm prisma:generate",
     "predev": "pnpm run prisma:generate",
     "init": "pnpm run prisma:generate && pnpm run prisma:migrate --name init",

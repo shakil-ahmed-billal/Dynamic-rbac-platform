@@ -14,6 +14,74 @@ import {
   IRegisterPayload,
 } from './auth.interface';
 
+const getResolvedPermissions = async (userId: string) => {
+  // 1. Get permissions from all roles
+  const userWithRoles = await prisma.user.findUnique({
+    where: { id: userId },
+    include: {
+      userRoles: {
+        include: {
+          role: {
+            include: {
+              rolePermissions: {
+                include: {
+                  permission: { include: { module: true } },
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+  });
+
+  if (!userWithRoles) return [];
+
+  const rolePermissionsMap = new Map<string, any>();
+  userWithRoles.userRoles.forEach((ur) => {
+    ur.role.rolePermissions.forEach((rp) => {
+      const p = rp.permission;
+      const key = `${p.module.name}.${p.action.toLowerCase()}`;
+      rolePermissionsMap.set(key, {
+        id: p.id,
+        action: p.action,
+        moduleId: p.moduleId,
+        moduleName: p.module.name,
+      });
+    });
+  });
+
+  // 2. Get user specific overrides
+  const userOverrides = await prisma.userPermission.findMany({
+    where: { userId },
+    include: {
+      permission: { include: { module: true } },
+    },
+  });
+
+  const effectivePermissions = new Map(rolePermissionsMap);
+
+  userOverrides.forEach((override) => {
+    const p = override.permission;
+    const key = `${p.module.name}.${p.action.toLowerCase()}`;
+    if (override.granted) {
+      // Add or ensure it's there
+      effectivePermissions.set(key, {
+        id: p.id,
+        action: p.action,
+        moduleId: p.moduleId,
+        moduleName: p.module.name,
+      });
+    } else {
+      // Revoke
+      effectivePermissions.delete(key);
+    }
+  });
+
+  return Array.from(effectivePermissions.values());
+};
+
+
 const register = async (payload: IRegisterPayload) => {
   const { name, email, password } = payload;
 
@@ -102,8 +170,11 @@ const getMe = async (requestUser: IRequestUser) => {
     throw new AppError(status.NOT_FOUND, 'User not found.');
   }
 
-  return user;
+  const permissions = await getResolvedPermissions(user.id);
+
+  return { ...user, permissions };
 };
+
 
 const refreshToken = async (token: string) => {
   const verifiedToken = jwtUtils.verifyToken(token, envVars.REFRESH_TOKEN_SECRET);

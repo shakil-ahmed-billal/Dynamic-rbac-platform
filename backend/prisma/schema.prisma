@@ -49,8 +49,12 @@ model User {
   updatedAt          DateTime   @updatedAt
 
   // Relations
-  userRoles   UserRole[]
-  auditLogs   AuditLog[]
+  userRoles       UserRole[]
+  auditLogs       AuditLog[]
+  managedUsers    User[]           @relation("UserManager")
+  managerId       String?
+  manager         User?            @relation("UserManager", fields: [managerId], references: [id])
+  userPermissions UserPermission[]
 
   @@map("users")
 }
@@ -61,10 +65,11 @@ model Role {
   id          String   @id @default(cuid())
   name        String   @unique
   description String?
-  isSystem    Boolean  @default(false) // system roles cannot be deleted (SUPER_ADMIN)
-  isActive    Boolean  @default(true)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  isSystem       Boolean  @default(false) // system roles cannot be deleted (SUPER_ADMIN)
+  isActive       Boolean  @default(true)
+  hierarchyLevel Int      @default(3) // 1=Admin, 2=Manager, 3=Agent, 4=Customer
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 
   // Relations
   userRoles       UserRole[]
@@ -98,6 +103,7 @@ model Permission {
 
   // Relations
   rolePermissions RolePermission[]
+  userPermissions UserPermission[]
 
   @@unique([action, moduleId])
   @@map("permissions")
@@ -129,6 +135,23 @@ model RolePermission {
 
   @@unique([roleId, permissionId])
   @@map("role_permissions")
+}
+
+model UserPermission {
+  id           String @id @default(cuid())
+  userId       String
+  permissionId String
+  granted      Boolean @default(true) // true = granted, false = explicitly revoked
+  grantedBy    String? // userId of the assigner
+
+  user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  permission Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, permissionId])
+  @@map("user_permissions")
 }
 
 // ─── Audit Log ────────────────────────────────────────────────────────────────
