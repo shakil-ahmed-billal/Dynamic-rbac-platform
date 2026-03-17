@@ -15,6 +15,7 @@ import {
 } from '../errors/handlePrismaErrors';
 import { handleZodError } from '../errors/handleZodError';
 import { TErrorResponse, TErrorSources } from '../interfaces/error.interface';
+import { tokenUtils } from '../utils/token';
 
 export const globalErrorHandler = async (
   err: any,
@@ -86,6 +87,10 @@ export const globalErrorHandler = async (
     error: envVars.NODE_ENV === 'development' ? err : undefined,
     stack: envVars.NODE_ENV === 'development' ? stack : undefined,
   };
+
+  if (statusCode === status.UNAUTHORIZED) {
+    tokenUtils.clearAuthCookies(res);
+  }
 
   res.status(statusCode).json(errorResponse);
 };
