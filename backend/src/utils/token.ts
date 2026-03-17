@@ -19,20 +19,22 @@ const getRefreshToken = (payload: JwtPayload) => {
 };
 
 const setAccessTokenCookie = (res: Response, token: string) => {
+  const isProd = envVars.NODE_ENV !== 'development';
   CookieUtils.setCookie(res, 'accessToken', token, {
     httpOnly: true,
-    secure: envVars.NODE_ENV === 'production',
-    sameSite: envVars.NODE_ENV === 'production' ? 'none' : 'lax', // Lax is default but explicit is better
+    secure: isProd,
+    sameSite: isProd ? 'none' : 'lax',
     path: '/',
     maxAge: 60 * 60 * 24 * 1000, // 1 day
   });
 };
 
 const setRefreshTokenCookie = (res: Response, token: string) => {
+  const isProd = envVars.NODE_ENV !== 'development';
   CookieUtils.setCookie(res, 'refreshToken', token, {
     httpOnly: true,
-    secure: envVars.NODE_ENV === 'production',
-    sameSite: envVars.NODE_ENV === 'production' ? 'none' : 'lax',
+    secure: isProd,
+    sameSite: isProd ? 'none' : 'lax',
     path: '/',
     maxAge: 60 * 60 * 24 * 1000 * 7, // 7 days
   });

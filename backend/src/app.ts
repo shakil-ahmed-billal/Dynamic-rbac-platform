@@ -18,12 +18,18 @@ app.set("trust proxy", 1);
 // CORS configuration
 app.use(
   cors({
-    origin: [
-      envVars.FRONTEND_URL,
-      "http://localhost:3000",
-      "http://127.0.0.1:3000",
-      "https://rbac-platform.vercel.app",
-    ],
+    origin: (origin, callback) => {
+      const allowedOrigins = [
+        envVars.FRONTEND_URL,
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+      ];
+      if (!origin || allowedOrigins.includes(origin) || origin.endsWith(".vercel.app")) {
+        callback(null, true);
+      } else {
+        callback(new Error("Not allowed by CORS"));
+      }
+    },
     credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE", "PATCH"],
     allowedHeaders: ["Content-Type", "Authorization", "Cookie"],

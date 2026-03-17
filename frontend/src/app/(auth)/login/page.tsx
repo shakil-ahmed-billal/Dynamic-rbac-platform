@@ -6,6 +6,7 @@ import { loginUser } from "@/services/auth.services";
 import { loginSchema, TLoginSchema } from "@/zod/auth.zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation } from "@tanstack/react-query";
+import Cookies from "js-cookie";
 import { Eye, EyeOff, Loader2 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
@@ -31,7 +32,24 @@ const LoginForm = () => {
 
   const mutation = useMutation({
     mutationFn: loginUser,
-    onSuccess: async () => {
+    onSuccess: async (response: any) => {
+      // Manual cookie storage fallback for Vercel/Cross-domain issues
+      const isProd = process.env.NODE_ENV === "production";
+      if (response?.data?.accessToken) {
+        Cookies.set("accessToken", response.data.accessToken, {
+          expires: 1, // 1 day
+          secure: isProd,
+          sameSite: isProd ? "none" : "lax",
+        });
+      }
+      if (response?.data?.refreshToken) {
+        Cookies.set("refreshToken", response.data.refreshToken, {
+          expires: 7, // 7 days
+          secure: isProd,
+          sameSite: isProd ? "none" : "lax",
+        });
+      }
+
       toast.success("Login successful!");
       await refetchUser();
       router.push(redirect);

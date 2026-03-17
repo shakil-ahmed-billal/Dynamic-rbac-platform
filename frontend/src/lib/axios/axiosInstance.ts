@@ -1,4 +1,5 @@
 import axios from 'axios';
+import Cookies from 'js-cookie';
 import { ApiResponse } from "../../types/api.types";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8000/api/v1';
@@ -11,6 +12,20 @@ export const axiosInstance = axios.create({
   },
   withCredentials: true,
 });
+
+// Request interceptor for attaching tokens
+axiosInstance.interceptors.request.use(
+  (config) => {
+    const token = Cookies.get('accessToken');
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+  },
+  (error) => {
+    return Promise.reject(error);
+  }
+);
 
 // Response interceptor for handling errors globally
 axiosInstance.interceptors.response.use(

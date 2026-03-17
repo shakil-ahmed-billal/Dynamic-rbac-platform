@@ -3,6 +3,7 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
 import { getMe, logoutUser } from "@/services/auth.services";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import Cookies from "js-cookie";
 import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
 
@@ -41,6 +42,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const logout = async () => {
     try {
       await logoutUser();
+      // Clear manual cookies
+      Cookies.remove("accessToken");
+      Cookies.remove("refreshToken");
+      
       queryClient.setQueryData(["me"], null);
       toast.success("Logged out successfully");
       router.push("/login");
