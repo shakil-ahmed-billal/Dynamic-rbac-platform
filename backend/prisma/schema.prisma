@@ -21,14 +21,6 @@ enum Gender {
   OTHER
 }
 
-enum PermissionAction {
-  READ
-  WRITE
-  UPDATE
-  DELETE
-  MANAGE
-}
-
 // ─── Core Auth Models ─────────────────────────────────────────────────────────
 
 model User {
@@ -56,7 +48,78 @@ model User {
   manager         User?            @relation("UserManager", fields: [managerId], references: [id])
   userPermissions UserPermission[]
 
+  assignedLeads   Lead[]
+  assignedTasks   Task[]           @relation("TaskAssignee")
+  createdTasks    Task[]           @relation("TaskCreator")
+  updatedSettings SystemSetting[]
+
+  @@index([managerId])
   @@map("users")
+}
+
+// ─── Business Models ─────────────────────────────────────────────────────────
+
+enum LeadStatus {
+  NEW
+  CONTACTED
+  QUALIFIED
+  LOST
+  WON
+}
+
+model Lead {
+  id         String     @id @default(cuid())
+  name       String
+  email      String
+  phone      String?
+  company    String?
+  status     LeadStatus @default(NEW)
+  source     String?
+  assignedTo String?
+  createdAt  DateTime   @default(now())
+  updatedAt  DateTime   @updatedAt
+
+  assignee   User?      @relation(fields: [assignedTo], references: [id], onDelete: SetNull)
+
+  @@map("leads")
+}
+
+enum TaskStatus {
+  TODO
+  IN_PROGRESS
+  REVIEW
+  DONE
+}
+
+model Task {
+  id          String     @id @default(cuid())
+  title       String
+  description String?
+  status      TaskStatus @default(TODO)
+  dueDate     DateTime?
+  assignedTo  String?
+  createdBy   String     // userId of creator
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  assignee    User?      @relation("TaskAssignee", fields: [assignedTo], references: [id], onDelete: SetNull)
+  creator     User       @relation("TaskCreator", fields: [createdBy], references: [id], onDelete: Cascade)
+
+  @@map("tasks")
+}
+
+model SystemSetting {
+  id          String   @id @default(cuid())
+  key         String   @unique
+  value       String
+  description String?
+  updatedBy   String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  updater     User?    @relation(fields: [updatedBy], references: [id], onDelete: SetNull)
+
+  @@map("system_settings")
 }
 
 // ─── RBAC Models ──────────────────────────────────────────────────────────────
@@ -80,7 +143,8 @@ model Role {
 
 model SystemModule {
   id          String   @id @default(cuid())
-  name        String   @unique // e.g. "users", "roles", "permissions"
+  name        String   @unique // e.g. "Users Management"
+  slug        String   @unique // e.g. "users"
   description String?
   isActive    Boolean  @default(true)
   createdAt   DateTime @default(now())
@@ -94,7 +158,9 @@ model SystemModule {
 
 model Permission {
   id       String           @id @default(cuid())
-  action   PermissionAction
+  action   String
+  name     String
+  slug     String           @unique
   moduleId String
   module   SystemModule     @relation(fields: [moduleId], references: [id], onDelete: Cascade)
 
@@ -134,6 +200,7 @@ model RolePermission {
   createdAt DateTime @default(now())
 
   @@unique([roleId, permissionId])
+  @@index([roleId])
   @@map("role_permissions")
 }
 
@@ -151,6 +218,7 @@ model UserPermission {
   updatedAt DateTime @updatedAt
 
   @@unique([userId, permissionId])
+  @@index([userId])
   @@map("user_permissions")
 }
 

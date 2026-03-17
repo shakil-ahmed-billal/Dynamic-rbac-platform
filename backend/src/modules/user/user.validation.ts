@@ -15,6 +15,8 @@ export const updateUserZodSchema = z.object({
   contactNumber: z.string().optional(),
   address: z.string().optional(),
   profilePhoto: z.string().url().optional(),
+  status: z.enum(['ACTIVE', 'BLOCKED']).optional(),
+  roleId: z.string().optional(),
 });
 
 export const updateUserStatusZodSchema = z.object({

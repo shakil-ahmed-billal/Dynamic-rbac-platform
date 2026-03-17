@@ -13,6 +13,8 @@ export interface IUpdateUserPayload {
   contactNumber?: string;
   address?: string;
   profilePhoto?: string;
+  status?: 'ACTIVE' | 'BLOCKED';
+  roleId?: string;
 }
 
 export interface IUpdateUserStatusPayload {

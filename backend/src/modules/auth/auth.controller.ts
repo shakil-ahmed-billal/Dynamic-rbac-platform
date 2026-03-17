@@ -16,7 +16,11 @@ const register = catchAsync(async (req: Request, res: Response) => {
     httpStatusCode: status.CREATED,
     success: true,
     message: 'User registered successfully.',
-    data: result.user,
+    data: {
+      user: result.user,
+      accessToken: result.accessToken,
+      refreshToken: result.refreshToken,
+    },
   });
 });
 
@@ -30,7 +34,11 @@ const login = catchAsync(async (req: Request, res: Response) => {
     httpStatusCode: status.OK,
     success: true,
     message: 'Login successful.',
-    data: result.user,
+    data: {
+      user: result.user,
+      accessToken: result.accessToken,
+      refreshToken: result.refreshToken,
+    },
   });
 });
 

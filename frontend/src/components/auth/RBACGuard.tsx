@@ -26,11 +26,11 @@ export const useRBAC = () => {
     if (user.isSuperAdmin) return true;
 
     // Use the flat resolved permissions array from the backend
-    const permissions: { action: string; moduleName: string }[] = user.permissions || [];
+    const permissions: { action: string; moduleSlug: string }[] = user.permissions || [];
 
     return permissions.some(
       (p) =>
-        p.moduleName?.toLowerCase() === moduleName.toLowerCase() &&
+        p.moduleSlug?.toLowerCase() === moduleName.toLowerCase() &&
         (p.action === action || p.action === "MANAGE")
     );
   };

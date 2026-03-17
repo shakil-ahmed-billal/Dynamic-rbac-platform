@@ -22,7 +22,7 @@ const setAccessTokenCookie = (res: Response, token: string) => {
   CookieUtils.setCookie(res, 'accessToken', token, {
     httpOnly: true,
     secure: envVars.NODE_ENV === 'production',
-    sameSite: envVars.NODE_ENV === 'production' ? 'none' : 'lax',
+    sameSite: envVars.NODE_ENV === 'production' ? 'none' : 'lax', // Lax is default but explicit is better
     path: '/',
     maxAge: 60 * 60 * 24 * 1000, // 1 day
   });

@@ -25,6 +25,12 @@ router.get(
 );
 
 router.get(
+  '/minimal',
+  checkAuth(), // Any authenticated user can see names for assignment
+  UserController.getMinimalUsers,
+);
+
+router.get(
   '/:id',
   checkAuth(),
   UserController.getUserById,

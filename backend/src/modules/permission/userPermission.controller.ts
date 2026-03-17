@@ -5,7 +5,7 @@ import { sendResponse } from '../../utils/sendResponse';
 import { UserPermissionService } from './userPermission.service';
 
 const grantPermission = catchAsync(async (req: Request, res: Response) => {
-  const granterId = req.user!.userId;
+  const granterId = req.user!.id;
   const targetUserId = req.params.userId as string;
   const { permissionId } = req.body;
 
@@ -20,7 +20,7 @@ const grantPermission = catchAsync(async (req: Request, res: Response) => {
 });
 
 const revokePermission = catchAsync(async (req: Request, res: Response) => {
-  const granterId = req.user!.userId;
+  const granterId = req.user!.id;
   const targetUserId = req.params.userId as string;
   const { permissionId } = req.body;
 

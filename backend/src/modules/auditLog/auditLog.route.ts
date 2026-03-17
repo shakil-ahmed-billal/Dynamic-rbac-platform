@@ -6,7 +6,13 @@ const router = Router();
 
 router.get(
   '/',
-  checkAuth({ permissions: [{ module: 'audit-logs', action: 'READ' }] }),
+  checkAuth({
+    permissions: [
+      { module: 'audit-logs', action: 'READ' },
+      { module: 'dashboard', action: 'READ' },
+    ],
+    permissionMode: 'ANY',
+  }),
   AuditLogController.getAllAuditLogs,
 );
 

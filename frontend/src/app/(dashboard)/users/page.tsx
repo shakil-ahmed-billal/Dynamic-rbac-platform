@@ -130,7 +130,7 @@ const UsersPage = () => {
       email: user.email,
       password: "",
       roleId: user.roleId || "",
-      isActive: !!user.isActive,
+      isActive: user.status === "ACTIVE",
     });
     setIsEditModalOpen(true);
   };
@@ -154,8 +154,13 @@ const UsersPage = () => {
   const handleUpdateSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (selectedUser) {
-      const { password, ...updateData } = formData;
-      const dataToSubmit = password ? formData : updateData;
+      const { password, isActive, ...updateData } = formData;
+      const dataToSubmit: any = password ? { ...formData } : { ...updateData };
+      
+      // Map isActive to status enum for backend
+      dataToSubmit.status = isActive ? "ACTIVE" : "BLOCKED";
+      delete dataToSubmit.isActive;
+
       updateMutation.mutate({ id: selectedUser.id, data: dataToSubmit });
     }
   };
@@ -244,11 +249,11 @@ const UsersPage = () => {
                       <Badge
                         className={cn(
                           "rounded-lg px-3 py-1 font-medium border-none",
-                          user.isActive ? "bg-green-50/50 text-green-600" : "bg-red-50/50 text-red-600"
+                          user.status === "ACTIVE" ? "bg-green-50/50 text-green-600" : "bg-red-50/50 text-red-600"
                         )}
                         variant="outline"
                       >
-                        {user.isActive ? "Active" : "Inactive"}
+                        {user.status === "ACTIVE" ? "Active" : "Inactive"}
                       </Badge>
                     </TableCell>
                     <TableCell className="text-[#9BA0AB] font-inter">

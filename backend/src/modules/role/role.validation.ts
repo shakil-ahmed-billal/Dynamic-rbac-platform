@@ -15,7 +15,5 @@ export const updateRoleZodSchema = z.object({
 });
 
 export const assignPermissionsZodSchema = z.object({
-  permissionIds: z
-    .array(z.string())
-    .min(1, 'At least one permission ID is required'),
+  permissionIds: z.array(z.string()),
 });

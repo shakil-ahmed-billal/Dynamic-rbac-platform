@@ -1,0 +1,5 @@
+
+> backend@1.0.0 lint C:\Shakil Dev\Clone Projact\Dynamic-rbac-platform\backend
+> eslint src/**/*.ts
+
+ ELIFECYCLE  Command failed with exit code 2.

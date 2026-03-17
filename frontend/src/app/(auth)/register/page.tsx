@@ -1,24 +1,23 @@
 "use client";
 
-import React from "react";
+import { cn } from "@/lib/utils";
+import { useAuth } from "@/providers/AuthProvider";
+import { registerUser } from "@/services/auth.services";
+import { registerSchema, TRegisterSchema } from "@/zod/auth.zod";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useMutation } from "@tanstack/react-query";
+import { Eye, EyeOff, Loader2 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { registerSchema, TRegisterSchema } from "@/zod/auth.zod";
-import { useMutation } from "@tanstack/react-query";
-import { registerUser } from "@/services/auth.services";
-import toast from "react-hot-toast";
 import { useRouter } from "next/navigation";
-import { cn } from "@/lib/utils";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Eye, EyeOff } from "lucide-react";
+import React from "react";
+import { useForm } from "react-hook-form";
+import toast from "react-hot-toast";
 
 const RegisterPage = () => {
   const [showPassword, setShowPassword] = React.useState(false);
   const router = useRouter();
+  const { settings } = useAuth();
 
   const {
     register,
@@ -44,158 +43,200 @@ const RegisterPage = () => {
   };
 
   return (
-    <div className="flex h-screen w-full bg-[#FDFDFD] overflow-hidden font-inter">
-      {/* Left Section: Register Form */}
-      <div className="w-full lg:w-[45%] flex flex-col p-8 md:p-12 lg:p-16 h-full overflow-y-auto">
+    <div className="flex h-screen w-full bg-[#FCFCFD] overflow-hidden">
+      {/* Left Section - Register Form */}
+      <div className="relative flex-1 flex flex-col items-center justify-center p-8 lg:p-12 overflow-y-auto">
         {/* Logo */}
-        <div className="flex items-center gap-2 mb-8">
+        <div className="absolute top-8 left-8 flex items-center gap-2">
           <Link href="/login" className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-brand-primary flex items-center justify-center">
-              <div className="w-4 h-4 rounded-full border-2 border-white/80" />
+            <div className="w-9 h-9 rounded-xl bg-[#FD6D3F] flex items-center justify-center shadow-lg shadow-brand-primary/20">
+              <div className="w-5 h-5 rounded-full border-2 border-white/90" />
             </div>
-            <span className="font-onest font-bold text-2xl text-[#1F232A]">Obliq</span>
+            <span className="font-onest font-extrabold text-2xl text-[#1F232A] tracking-tight">
+              {settings?.site_name || "Obliq"}
+            </span>
           </Link>
         </div>
 
-        {/* Form Container */}
-        <div className="flex-1 flex flex-col justify-center items-center w-full max-w-md mx-auto">
-          <div className="w-full bg-white rounded-[32px] p-8 md:p-10 shadow-[0px_20px_50px_rgba(0,0,0,0.04)] border border-gray-50 flex flex-col items-center">
-            <div className="text-center mb-8">
-              <h1 className="font-onest text-[32px] font-bold text-[#1F232A] mb-2 tracking-tight">Create Account</h1>
-              <p className="text-[#9BA0AB] text-[16px]">Join our platform today</p>
+        {/* Register Card */}
+        <div className="w-full max-w-[480px] my-12 animate-fade-in">
+          <div className="bg-white p-8 md:p-10 rounded-[32px] shadow-[0px_4px_30px_rgba(0,0,0,0.03),0px_20px_60px_rgba(194,194,194,0.1)] border border-gray-50">
+            <div className="text-center mb-10">
+              <h1 className="text-[32px] font-bold font-onest text-[#1F232A] mb-2 tracking-tight">
+                Create Account
+              </h1>
+              <p className="text-[#9BA0AB] font-inter text-[16px]">
+                Join our platform today
+              </p>
             </div>
 
-            <form onSubmit={handleSubmit(onSubmit)} className="w-full space-y-5">
+            <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
               <div className="space-y-1.5">
-                <Label htmlFor="name" className="text-[#404857] font-medium ml-1">Full Name</Label>
-                <Input
-                  {...register("name")}
-                  id="name"
-                  placeholder="John Doe"
+                <label
+                  htmlFor="name"
+                  className="block text-sm font-semibold text-[#404857] ml-1"
+                >
+                  Full Name
+                </label>
+                <div
                   className={cn(
-                    "h-12 rounded-xl border-gray-200 bg-[#F9FAFB] px-4 font-inter focus-visible:ring-brand-primary focus-visible:bg-white transition-all",
-                    errors.name && "border-red-500"
+                    "flex h-12 items-center px-4 bg-white rounded-xl border border-gray-200 focus-within:border-brand-primary focus-within:ring-2 focus-within:ring-brand-primary/10 transition-all",
+                    errors.name && "border-red-500",
                   )}
-                />
+                >
+                  <input
+                    {...register("name")}
+                    id="name"
+                    placeholder="John Doe"
+                    className="flex-1 h-full bg-transparent border-none outline-none text-[#1F232A] placeholder:text-gray-400 text-sm font-medium"
+                  />
+                </div>
                 {errors.name && (
-                  <span className="text-xs text-red-500 ml-1">{errors.name.message}</span>
+                  <p className="text-xs text-red-500 mt-1 ml-1">
+                    {errors.name.message}
+                  </p>
                 )}
               </div>
 
               <div className="space-y-1.5">
-                <Label htmlFor="email" className="text-[#404857] font-medium ml-1">Email</Label>
-                <Input
-                  {...register("email")}
-                  id="email"
-                  type="email"
-                  placeholder="example@email.com"
+                <label
+                  htmlFor="email"
+                  className="block text-sm font-semibold text-[#404857] ml-1"
+                >
+                  Email
+                </label>
+                <div
                   className={cn(
-                    "h-12 rounded-xl border-gray-200 bg-[#F9FAFB] px-4 font-inter focus-visible:ring-brand-primary focus-visible:bg-white transition-all",
-                    errors.email && "border-red-500"
+                    "flex h-12 items-center px-4 bg-white rounded-xl border border-gray-200 focus-within:border-brand-primary focus-within:ring-2 focus-within:ring-brand-primary/10 transition-all",
+                    errors.email && "border-red-500",
                   )}
-                />
+                >
+                  <input
+                    {...register("email")}
+                    id="email"
+                    type="email"
+                    placeholder="example@email.com"
+                    className="flex-1 h-full bg-transparent border-none outline-none text-[#1F232A] placeholder:text-gray-400 text-sm font-medium"
+                  />
+                </div>
                 {errors.email && (
-                  <span className="text-xs text-red-500 ml-1">{errors.email.message}</span>
+                  <p className="text-xs text-red-500 mt-1 ml-1">
+                    {errors.email.message}
+                  </p>
                 )}
               </div>
 
               <div className="space-y-1.5">
-                <Label htmlFor="password" className="text-[#404857] font-medium ml-1">Password</Label>
-                <div className="relative">
-                  <Input
+                <label
+                  htmlFor="password"
+                  className="block text-sm font-semibold text-[#404857] ml-1"
+                >
+                  Password
+                </label>
+                <div
+                  className={cn(
+                    "flex h-12 items-center px-4 bg-white rounded-xl border border-gray-200 focus-within:border-brand-primary focus-within:ring-2 focus-within:ring-brand-primary/10 transition-all",
+                    errors.password && "border-red-500",
+                  )}
+                >
+                  <input
                     {...register("password")}
                     id="password"
                     type={showPassword ? "text" : "password"}
                     placeholder="Create a password"
-                    className={cn(
-                      "h-12 rounded-xl border-gray-200 bg-[#F9FAFB] px-4 font-inter focus-visible:ring-brand-primary focus-visible:bg-white transition-all pr-12",
-                      errors.password && "border-red-500"
-                    )}
+                    className="flex-1 h-full bg-transparent border-none outline-none text-[#1F232A] placeholder:text-gray-400 text-sm font-medium"
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 focus:outline-none"
+                    className="text-gray-400 hover:text-gray-600 transition-colors"
                   >
-                    {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                    {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                   </button>
                 </div>
                 {errors.password && (
-                  <span className="text-xs text-red-500 ml-1">{errors.password.message}</span>
+                  <p className="text-xs text-red-500 mt-1 ml-1">
+                    {errors.password.message}
+                  </p>
                 )}
               </div>
 
               <div className="space-y-1.5">
-                <Label htmlFor="confirmPassword" className="text-[#404857] font-medium ml-1">Confirm Password</Label>
-                <Input
-                  {...register("confirmPassword")}
-                  id="confirmPassword"
-                  type="password"
-                  placeholder="Confirm your password"
+                <label
+                  htmlFor="confirmPassword"
+                  className="block text-sm font-semibold text-[#404857] ml-1"
+                >
+                  Confirm Password
+                </label>
+                <div
                   className={cn(
-                    "h-12 rounded-xl border-gray-200 bg-[#F9FAFB] px-4 font-inter focus-visible:ring-brand-primary focus-visible:bg-white transition-all",
-                    errors.confirmPassword && "border-red-500"
+                    "flex h-12 items-center px-4 bg-white rounded-xl border border-gray-200 focus-within:border-brand-primary focus-within:ring-2 focus-within:ring-brand-primary/10 transition-all",
+                    errors.confirmPassword && "border-red-500",
                   )}
-                />
+                >
+                  <input
+                    {...register("confirmPassword")}
+                    id="confirmPassword"
+                    type="password"
+                    placeholder="Confirm your password"
+                    className="flex-1 h-full bg-transparent border-none outline-none text-[#1F232A] placeholder:text-gray-400 text-sm font-medium"
+                  />
+                </div>
                 {errors.confirmPassword && (
-                  <span className="text-xs text-red-500 ml-1">{errors.confirmPassword.message}</span>
+                  <p className="text-xs text-red-500 mt-1 ml-1">
+                    {errors.confirmPassword.message}
+                  </p>
                 )}
               </div>
 
-              <Button
+              <button
                 type="submit"
                 disabled={mutation.isPending}
-                className="w-full h-14 bg-brand-primary hover:bg-[#E85B2F] text-white rounded-2xl text-lg font-bold shadow-[0px_10px_20px_rgba(253,109,63,0.2)] transition-all transform active:scale-[0.98] disabled:opacity-70 mt-4"
+                className="w-full h-14 bg-brand-primary hover:bg-brand-dark text-white rounded-2xl font-bold text-lg shadow-lg shadow-brand-primary/20 transition-all active:scale-[0.98] disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center mt-6"
               >
-                {mutation.isPending ? "Creating Account..." : "Sign up"}
-              </Button>
+                {mutation.isPending ? (
+                  <Loader2 className="h-6 w-6 animate-spin" />
+                ) : (
+                  "Sign up"
+                )}
+              </button>
             </form>
 
-            <div className="mt-8 flex gap-2 text-sm">
-              <span className="text-[#666C79]">Already have an account?</span>
-              <Link href="/login" className="text-[#1F232A] font-bold hover:underline">Login</Link>
+            <div className="text-center mt-8">
+              <p className="text-[15px] text-[#666C79]">
+                Already have an account?{" "}
+                <Link
+                  href="/login"
+                  className="font-bold text-[#1F232A] hover:underline"
+                >
+                  Login
+                </Link>
+              </p>
             </div>
           </div>
         </div>
-
-        {/* Footer info placeholder */}
-        <div className="mt-8 pt-8 pb-4 text-center text-xs text-[#9BA0AB]">
-          © 2024 Obliq Platform. All rights reserved.
-        </div>
       </div>
 
-      {/* Right Section: Large Visual Area */}
-      <div className="hidden lg:block w-[55%] h-[calc(100%-40px)] m-5 rounded-[40px] relative overflow-hidden bg-[#F5F5F5]">
-        <div className="absolute inset-0 z-0">
-          <Image 
-            src="/images/image 1.webp" 
-            alt="Design Background" 
-            fill 
-            className="object-cover"
+      {/* Right Section - Decorative Mockup */}
+      <div className="hidden lg:flex flex-1 p-6 items-center justify-center">
+        <div className="relative w-full h-full rounded-[40px] overflow-hidden bg-[linear-gradient(135deg,#FD6D3F_0%,#FFB48F_100%)] flex items-center justify-center p-12">
+          <Image
+            src="/images/Frame.webp"
+            alt="Wavy background"
+            fill
+            className="object-cover opacity-80"
             priority
           />
-        </div>
 
-        <div className="absolute inset-x-[10%] bottom-0 top-[15%] z-10 rounded-t-[32px] bg-white shadow-[0px_-20px_100px_rgba(0,0,0,0.1)] overflow-hidden border-t border-x border-gray-100 flex flex-col">
-          <div className="h-14 bg-[#F9FAFB] border-b border-gray-100 flex items-center px-6 gap-4">
-             <div className="flex gap-2">
-               <div className="w-3 h-3 rounded-full bg-[#FF5F57]" />
-               <div className="w-3 h-3 rounded-full bg-[#FFBD2E]" />
-               <div className="w-3 h-3 rounded-full bg-[#28C840]" />
-             </div>
-             <div className="flex-1 max-w-sm h-7 bg-white rounded-md border border-gray-200 flex items-center px-3">
-               <span className="text-[10px] text-gray-400">obliq.io/register</span>
-             </div>
-          </div>
-          
-          <div className="flex-1 relative">
-            <Image 
-              src="/images/Frame.webp" 
-              alt="Dashboard Preview" 
-              fill 
-              className="object-top object-cover"
-            />
-          </div>
+          {/* Dashboard Mockup Overlay */}
+                    <div className="absolute right-0 w-full max-w-[600px] aspect-[1.3] rounded-l-3xl overflow-hidden shadow-2xl animate-fade-up">
+                      <Image
+                        src="/images/dashboard.webp"
+                        alt="Dashboard Mockup"
+                        fill
+                        className="object-cover"
+                      />
+                    </div>
         </div>
       </div>
     </div>

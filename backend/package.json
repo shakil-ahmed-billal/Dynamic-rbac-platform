@@ -16,10 +16,6 @@
     "setup": "pnpm install && pnpm add @prisma/adapter-pg pg && pnpm add -D @types/pg && pnpm prisma:generate",
     "predev": "pnpm run prisma:generate",
     "init": "pnpm run prisma:generate && pnpm run prisma:migrate --name init",
-    "seed:templates": "tsx scripts/seed-templates.ts",
-    "import:client-history": "tsx scripts/import-client-history.ts data/data.csv",
-    "test:import": "tsx scripts/test-import.ts",
-    "quick-start": "tsx scripts/quick-start.ts",
     "lint": "eslint src/**/*.ts",
     "lint:fix": "eslint src/**/*.ts --fix",
     "format": "prettier --write ."
@@ -40,6 +36,7 @@
     "cors": "^2.8.6",
     "dotenv": "^17.3.1",
     "express": "^5.2.1",
+    "express-rate-limit": "^8.3.1",
     "http-status": "^2.1.0",
     "jsonwebtoken": "^9.0.3",
     "morgan": "^1.10.1",

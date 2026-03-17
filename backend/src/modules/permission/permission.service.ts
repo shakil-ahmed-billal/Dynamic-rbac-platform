@@ -38,12 +38,13 @@ const getAllPermissions = async (query: Record<string, unknown>) => {
     prisma.permission as any,
     query,
     {
-      filterableFields: ['action', 'moduleId'],
+      filterableFields: ['action', 'moduleId', 'name', 'slug'],
     },
   )
     .filter()
     .sort()
     .paginate()
+    .include(permissionInclude)
     .execute();
 
   return result;

@@ -35,12 +35,13 @@ const getEffectivePermissions = async (userId: string) => {
   userWithRoles.userRoles.forEach((ur) => {
     ur.role.rolePermissions.forEach((rp) => {
       const p = rp.permission;
-      const key = `${p.module.name}.${p.action}`;
+      const key = `${p.module.slug}.${p.action}`;
       effectivePermissions.set(key, {
         id: p.id,
         action: p.action,
         moduleId: p.moduleId,
         moduleName: p.module.name,
+        moduleSlug: p.module.slug,
       });
     });
   });
@@ -53,13 +54,14 @@ const getEffectivePermissions = async (userId: string) => {
 
   userOverrides.forEach((override) => {
     const p = override.permission;
-    const key = `${p.module.name}.${p.action}`;
+    const key = `${p.module.slug}.${p.action}`;
     if (override.granted) {
       effectivePermissions.set(key, {
         id: p.id,
         action: p.action,
         moduleId: p.moduleId,
         moduleName: p.module.name,
+        moduleSlug: p.module.slug,
       });
     } else {
       effectivePermissions.delete(key);

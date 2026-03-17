@@ -1,5 +1,5 @@
 export interface IRequestUser {
-  userId: string;
+  id: string;
   email: string;
   isSuperAdmin: boolean;
   roles: string[]; // role names

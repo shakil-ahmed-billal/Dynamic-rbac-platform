@@ -1,3 +1,4 @@
+import { RBACProxy } from "@/components/auth/RBACProxy";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import React from "react";
 
@@ -6,5 +7,9 @@ export default function RootDashboardLayout({
 }: {
   children: React.ReactNode;
 }) {
-  return <DashboardLayout>{children}</DashboardLayout>;
+  return (
+    <RBACProxy>
+      <DashboardLayout>{children}</DashboardLayout>
+    </RBACProxy>
+  );
 }

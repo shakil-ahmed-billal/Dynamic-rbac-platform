@@ -16,6 +16,20 @@ const roleInclude = {
   _count: { select: { userRoles: true } },
 };
 
+const transformRole = (role: any) => {
+  if (!role) return null;
+  const { rolePermissions, ...rest } = role;
+  return {
+    ...rest,
+    permissions: (rolePermissions || [])
+      .filter((rp: any) => rp && rp.permission)
+      .map((rp: any) => ({
+        ...rp.permission,
+        id: rp.permission.id,
+      })),
+  };
+};
+
 const createRole = async (payload: ICreateRolePayload) => {
   const existingRole = await prisma.role.findUnique({ where: { name: payload.name } });
   if (existingRole) {
@@ -27,7 +41,7 @@ const createRole = async (payload: ICreateRolePayload) => {
     include: roleInclude,
   });
 
-  return role;
+  return transformRole(role);
 };
 
 const getAllRoles = async (query: Record<string, unknown>) => {
@@ -43,8 +57,10 @@ const getAllRoles = async (query: Record<string, unknown>) => {
     .filter()
     .sort()
     .paginate()
+    .include(roleInclude)
     .execute();
 
+  result.data = result.data.map(transformRole);
   return result;
 };
 
@@ -58,7 +74,7 @@ const getRoleById = async (id: string) => {
     throw new AppError(status.NOT_FOUND, 'Role not found.');
   }
 
-  return role;
+  return transformRole(role);
 };
 
 const updateRole = async (id: string, payload: IUpdateRolePayload) => {
@@ -86,7 +102,7 @@ const updateRole = async (id: string, payload: IUpdateRolePayload) => {
     include: roleInclude,
   });
 
-  return updated;
+  return transformRole(updated);
 };
 
 const deleteRole = async (id: string) => {
@@ -123,15 +139,18 @@ const assignPermissionsToRole = async (id: string, payload: IAssignPermissionsPa
   await prisma.$transaction(async (tx: any) => {
     await tx.rolePermission.deleteMany({ where: { roleId: id } });
 
-    await tx.rolePermission.createMany({
-      data: payload.permissionIds.map((permissionId) => ({
-        roleId: id,
-        permissionId,
-      })),
-    });
+    if (payload.permissionIds.length > 0) {
+      await tx.rolePermission.createMany({
+        data: payload.permissionIds.map((permissionId) => ({
+          roleId: id,
+          permissionId,
+        })),
+      });
+    }
   });
 
-  return prisma.role.findUnique({ where: { id }, include: roleInclude });
+  const updatedRole = await prisma.role.findUnique({ where: { id }, include: roleInclude });
+  return transformRole(updatedRole);
 };
 
 const removePermissionsFromRole = async (id: string, payload: IAssignPermissionsPayload) => {
@@ -144,7 +163,8 @@ const removePermissionsFromRole = async (id: string, payload: IAssignPermissions
     where: { roleId: id, permissionId: { in: payload.permissionIds } },
   });
 
-  return prisma.role.findUnique({ where: { id }, include: roleInclude });
+  const updatedRole = await prisma.role.findUnique({ where: { id }, include: roleInclude });
+  return transformRole(updatedRole);
 };
 
 export const RoleService = {

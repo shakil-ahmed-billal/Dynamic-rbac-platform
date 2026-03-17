@@ -1,9 +1,13 @@
 export interface ICreatePermissionPayload {
-  action: 'READ' | 'WRITE' | 'UPDATE' | 'DELETE' | 'MANAGE';
+  action: string;
+  name: string;
+  slug: string;
   moduleId: string;
 }
 
 export interface IUpdatePermissionPayload {
-  action?: 'READ' | 'WRITE' | 'UPDATE' | 'DELETE' | 'MANAGE';
+  action?: string;
+  name?: string;
+  slug?: string;
   moduleId?: string;
 }

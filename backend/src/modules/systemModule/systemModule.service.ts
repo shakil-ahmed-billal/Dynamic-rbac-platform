@@ -6,9 +6,14 @@ import { QueryBuilder } from '../../utils/QueryBuilder';
 import { ICreateSystemModulePayload, IUpdateSystemModulePayload } from './systemModule.interface';
 
 const createSystemModule = async (payload: ICreateSystemModulePayload) => {
-  const existing = await prisma.systemModule.findUnique({ where: { name: payload.name } });
-  if (existing) {
+  const existingName = await prisma.systemModule.findUnique({ where: { name: payload.name } });
+  if (existingName) {
     throw new AppError(status.CONFLICT, `Module with name "${payload.name}" already exists.`);
+  }
+
+  const existingSlug = await prisma.systemModule.findUnique({ where: { slug: payload.slug } });
+  if (existingSlug) {
+    throw new AppError(status.CONFLICT, `Module with slug "${payload.slug}" already exists.`);
   }
 
   const module = await prisma.systemModule.create({
@@ -29,6 +34,7 @@ const getAllSystemModules = async (query: Record<string, unknown>) => {
     .filter()
     .sort()
     .paginate()
+    .include({ permissions: { include: { module: true } } })
     .execute();
 
   return result;
@@ -57,6 +63,15 @@ const updateSystemModule = async (id: string, payload: IUpdateSystemModulePayloa
     });
     if (duplicate) {
       throw new AppError(status.CONFLICT, `Module with name "${payload.name}" already exists.`);
+    }
+  }
+
+  if (payload.slug && payload.slug !== module.slug) {
+    const duplicate = await prisma.systemModule.findFirst({
+      where: { slug: payload.slug, id: { not: id } },
+    });
+    if (duplicate) {
+      throw new AppError(status.CONFLICT, `Module with slug "${payload.slug}" already exists.`);
     }
   }
 

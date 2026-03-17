@@ -3,9 +3,20 @@ import status from 'http-status';
 import { catchAsync } from '../../utils/catchAsync';
 import { sendResponse } from '../../utils/sendResponse';
 import { PermissionService } from './permission.service';
+import { AuditLogService } from '../auditLog/auditLog.service';
 
 const createPermission = catchAsync(async (req: Request, res: Response) => {
   const result = await PermissionService.createPermission(req.body);
+  
+  await AuditLogService.createAuditLog({
+    userId: req.user!.userId,
+    action: 'PERMISSION_CREATED',
+    module: 'permissions',
+    targetId: (result as any).id,
+    newData: req.body,
+    ipAddress: req.ip,
+  });
+
   sendResponse(res, {
     httpStatusCode: status.CREATED,
     success: true,
@@ -37,6 +48,16 @@ const getPermissionById = catchAsync(async (req: Request, res: Response) => {
 
 const updatePermission = catchAsync(async (req: Request, res: Response) => {
   const result = await PermissionService.updatePermission(req.params.id as string, req.body);
+  
+  await AuditLogService.createAuditLog({
+    userId: req.user!.userId,
+    action: 'PERMISSION_UPDATED',
+    module: 'permissions',
+    targetId: req.params.id as string,
+    newData: req.body,
+    ipAddress: req.ip,
+  });
+
   sendResponse(res, {
     httpStatusCode: status.OK,
     success: true,
@@ -47,6 +68,15 @@ const updatePermission = catchAsync(async (req: Request, res: Response) => {
 
 const deletePermission = catchAsync(async (req: Request, res: Response) => {
   const result = await PermissionService.deletePermission(req.params.id as string);
+  
+  await AuditLogService.createAuditLog({
+    userId: req.user!.userId,
+    action: 'PERMISSION_DELETED',
+    module: 'permissions',
+    targetId: req.params.id as string,
+    ipAddress: req.ip,
+  });
+
   sendResponse(res, {
     httpStatusCode: status.OK,
     success: true,

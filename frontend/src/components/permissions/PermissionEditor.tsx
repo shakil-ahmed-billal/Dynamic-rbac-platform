@@ -64,7 +64,7 @@ export const PermissionEditor: React.FC<PermissionEditorProps> = ({
 
   const { data: permissionsRes, isLoading: permsLoading } = useQuery({
     queryKey: ["permissions"],
-    queryFn: () => getAllPermissions(),
+    queryFn: () => getAllPermissions({ limit: 1000 }),
   });
 
   const { data: overridesRes, isLoading: overridesLoading } = useQuery({
@@ -97,11 +97,11 @@ export const PermissionEditor: React.FC<PermissionEditorProps> = ({
   const allPermissions: any[] = (permissionsRes as any)?.data || [];
 
   const moduleMap = useMemo(() => {
-    const map = new Map<string, Map<PermAction, { id: string; moduleName: string }>>();
+    const map = new Map<string, Map<PermAction, { id: string; moduleName: string; name: string; moduleSlug: string }>>();
     for (const p of allPermissions) {
-      const moduleName: string = p.module?.name ?? p.moduleId;
-      if (!map.has(moduleName)) map.set(moduleName, new Map());
-      map.get(moduleName)!.set(p.action as PermAction, { id: p.id, moduleName });
+      const moduleSlug: string = p.module?.slug ?? p.moduleId;
+      if (!map.has(moduleSlug)) map.set(moduleSlug, new Map());
+      map.get(moduleSlug)!.set(p.action as PermAction, { id: p.id, moduleName: p.module?.name ?? moduleSlug, name: p.name, moduleSlug });
     }
     return map;
   }, [allPermissions]);
@@ -124,8 +124,8 @@ export const PermissionEditor: React.FC<PermissionEditorProps> = ({
     return set;
   }, [userEffectiveRolePermissions]);
 
-  const getCellState = (moduleName: string, action: PermAction, permId: string): CellState => {
-    const key = `${moduleName}.${action}`;
+  const getCellState = (moduleSlug: string, action: PermAction, permId: string): CellState => {
+    const key = `${moduleSlug}.${action}`;
     const isFromRole = rolePerms.has(key);
     if (overrides.has(permId)) {
       return overrides.get(permId) ? "granted" : "revoked";
@@ -175,10 +175,10 @@ export const PermissionEditor: React.FC<PermissionEditorProps> = ({
           </tr>
         </thead>
         <tbody className="divide-y divide-gray-50">
-          {modules.map(([moduleName, actionMap]) => (
-            <tr key={moduleName} className="hover:bg-gray-50/30 transition-colors">
+          {modules.map(([moduleSlug, actionMap]) => (
+            <tr key={moduleSlug} className="hover:bg-gray-50/30 transition-colors">
               <td className="px-5 py-3 font-medium text-[#1F232A] font-inter capitalize">
-                {moduleName.replace(/_/g, " ")}
+                {moduleSlug.replace(/_/g, " ")}
               </td>
               {ACTIONS.map((action) => {
                 const perm = actionMap.get(action);
@@ -192,13 +192,13 @@ export const PermissionEditor: React.FC<PermissionEditorProps> = ({
                   );
                 }
 
-                const state = getCellState(moduleName, action, perm.id);
+                const state = getCellState(moduleSlug, action, perm.id);
 
                 return (
                   <td key={action} className="px-4 py-3 text-center">
                     <button
                       onClick={() => handleCellClick(perm.id, state)}
-                      title={`${state === "role" ? "Inherited from role" : state === "granted" ? "Explicitly granted — click to revoke" : state === "revoked" ? "Explicitly revoked — click to re-grant" : "Not assigned — click to grant"}`}
+                      title={`${perm.name} — ${state === "role" ? "Inherited from role" : state === "granted" ? "Explicitly granted — click to revoke" : state === "revoked" ? "Explicitly revoked — click to re-grant" : "Not assigned — click to grant"}`}
                       className={cn(
                         "inline-flex items-center justify-center h-7 w-7 rounded-lg transition-all duration-150 cursor-pointer hover:scale-110 active:scale-95",
                         cellStyles[state]

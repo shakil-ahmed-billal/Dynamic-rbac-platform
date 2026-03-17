@@ -1,14 +1,31 @@
-import { PrismaPg } from '@prisma/adapter-pg';
-import { PrismaClient } from '../src/generated/prisma/client';
-import bcrypt from 'bcrypt';
-import dotenv from 'dotenv';
-import path from 'path';
+import { PrismaPg } from "@prisma/adapter-pg";
+import bcrypt from "bcrypt";
+import dotenv from "dotenv";
+import path from "path";
+import { PrismaClient } from "../src/generated/prisma/client";
 
-dotenv.config({ path: path.join(__dirname, '../.env') });
+dotenv.config({ path: path.join(__dirname, "../.env") });
 
 const connectionString = process.env.DATABASE_URL as string;
 const adapter = new PrismaPg({ connectionString });
 const prisma = new PrismaClient({ adapter });
+
+async function clearDatabase() {
+  console.log("🧹 Clearing existing data...");
+  // Delete in reverse dependency order
+  await prisma.auditLog.deleteMany();
+  await prisma.userPermission.deleteMany();
+  await prisma.rolePermission.deleteMany();
+  await prisma.userRole.deleteMany();
+  await prisma.task.deleteMany();
+  await prisma.lead.deleteMany();
+  await prisma.systemSetting.deleteMany();
+  await prisma.permission.deleteMany();
+  await prisma.systemModule.deleteMany();
+  await prisma.role.deleteMany();
+  await prisma.user.deleteMany();
+  console.log("✅ Database cleared.");
+}
 
 async function createUser(
   email: string,
@@ -18,15 +35,13 @@ async function createUser(
   isSuperAdmin = false,
 ) {
   const hashed = await bcrypt.hash(password, 10);
-  const user = await prisma.user.upsert({
-    where: { email },
-    update: {},
-    create: {
+  const user = await prisma.user.create({
+    data: {
       email,
       name,
       password: hashed,
       isSuperAdmin,
-      status: 'ACTIVE',
+      status: "ACTIVE",
       ...(roleId
         ? {
             userRoles: {
@@ -40,194 +55,338 @@ async function createUser(
 }
 
 async function main() {
-  console.log('🌱 Seeding database with comprehensive test data...\n');
+  console.log("🌱 Starting comprehensive seeding...\n");
 
-  // ───────────────────────────────────────────────
+  await clearDatabase();
+
   // 1. SYSTEM MODULES
-  // ───────────────────────────────────────────────
-  const moduleNames = [
-    { name: 'users',       description: 'User account management' },
-    { name: 'roles',       description: 'Role management' },
-    { name: 'permissions', description: 'Permission management' },
-    { name: 'modules',     description: 'System module management' },
-    { name: 'audit-logs',  description: 'Audit trail and activity logs' },
-    { name: 'dashboard',   description: 'Dashboard and analytics overview' },
+  const moduleData = [
+    {
+      name: "Dashboard",
+      slug: "dashboard",
+      description: "Overview and analytics",
+    },
+    { name: "Users", slug: "users", description: "User management" },
+    { name: "Roles", slug: "roles", description: "Role and policy management" },
+    {
+      name: "Permissions",
+      slug: "permissions",
+      description: "Access control definitions",
+    },
+    {
+      name: "System Modules",
+      slug: "system_modules",
+      description: "Platform component management",
+    },
+    { name: "Leads", slug: "leads", description: "Sales pipeline and CRM" },
+    { name: "Tasks", slug: "tasks", description: "Project and action items" },
+    {
+      name: "Reports",
+      slug: "reports",
+      description: "Data intelligence and exports",
+    },
+    {
+      name: "Audit Logs",
+      slug: "audit_logs",
+      description: "Security and activity tracking",
+    },
+    {
+      name: "Settings",
+      slug: "settings",
+      description: "Global configurations",
+    },
+    {
+      name: "Customer Portal",
+      slug: "portal",
+      description: "External user interface",
+    },
   ];
 
   const createdModules: Record<string, any> = {};
-  for (const mod of moduleNames) {
-    const m = await prisma.systemModule.upsert({
-      where: { name: mod.name },
-      update: {},
-      create: { name: mod.name, description: mod.description },
+  for (const mod of moduleData) {
+    const m = await prisma.systemModule.create({
+      data: mod,
     });
-    createdModules[mod.name] = m;
+    createdModules[mod.slug] = m;
   }
-  console.log('✅ System modules created:', moduleNames.map((m) => m.name).join(', '));
+  console.log("✅ Modules created.");
 
-  // ───────────────────────────────────────────────
   // 2. PERMISSIONS
-  // ───────────────────────────────────────────────
-  const actions = ['READ', 'WRITE', 'UPDATE', 'DELETE', 'MANAGE'] as const;
+  const actions = ["READ", "WRITE", "UPDATE", "DELETE", "MANAGE"] as const;
   const allPermissions: Record<string, Record<string, any>> = {};
 
-  for (const modName of Object.keys(createdModules)) {
-    allPermissions[modName] = {};
+  for (const slug of Object.keys(createdModules)) {
+    allPermissions[slug] = {};
     for (const action of actions) {
-      const perm = await prisma.permission.upsert({
-        where: {
-          action_moduleId: {
-            action: action as any,
-            moduleId: createdModules[modName].id,
-          },
-        },
-        update: {},
-        create: {
-          action: action as any,
-          moduleId: createdModules[modName].id,
+      const modName = moduleData.find((m) => m.slug === slug)?.name;
+      const name = `${action.charAt(0) + action.slice(1).toLowerCase()} ${modName}`;
+      const permSlug = `${slug.toUpperCase()}_${action}`;
+
+      const perm = await prisma.permission.create({
+        data: {
+          action: action,
+          name,
+          slug: permSlug,
+          moduleId: createdModules[slug].id,
         },
       });
-      allPermissions[modName][action] = perm;
+      allPermissions[slug][action] = perm;
     }
   }
-  console.log('✅ Created 30 permissions across all modules');
+  console.log("✅ Permissions created.");
 
-  // ───────────────────────────────────────────────
   // 3. ROLES
-  // ───────────────────────────────────────────────
-  const adminRole = await prisma.role.upsert({
-    where: { name: 'Admin' },
-    update: {},
-    create: { name: 'Admin', description: 'Full access to all platform resources', isSystem: true },
+  const adminRole = await prisma.role.create({
+    data: {
+      name: "Admin",
+      description: "Full access to all platform resources",
+      isSystem: true,
+      hierarchyLevel: 1,
+    },
   });
 
-  const editorRole = await prisma.role.upsert({
-    where: { name: 'Editor' },
-    update: {},
-    create: { name: 'Editor', description: 'Can read and update users and content', isSystem: false },
+  const managerRole = await prisma.role.create({
+    data: {
+      name: "Manager",
+      description: "Can manage users, leads and tasks",
+      isSystem: false,
+      hierarchyLevel: 2,
+    },
   });
 
-  const viewerRole = await prisma.role.upsert({
-    where: { name: 'Viewer' },
-    update: {},
-    create: { name: 'Viewer', description: 'Read-only access to all resources', isSystem: false },
+  const agentRole = await prisma.role.create({
+    data: {
+      name: "Agent",
+      description: "Can view and handle assigned leads/tasks",
+      isSystem: false,
+      hierarchyLevel: 3,
+    },
   });
 
-  const moderatorRole = await prisma.role.upsert({
-    where: { name: 'Moderator' },
-    update: {},
-    create: { name: 'Moderator', description: 'Can manage users and view audit logs', isSystem: false },
+  const userRole = await prisma.role.create({
+    data: {
+      name: "User",
+      description: "Basic access to dashboard and portal",
+      isSystem: true,
+      hierarchyLevel: 4,
+    },
   });
 
-  const userRole = await prisma.role.upsert({
-    where: { name: 'User' },
-    update: {},
-    create: { name: 'User', description: 'Basic registered user with minimal access', isSystem: true },
-  });
+  console.log("✅ Roles created.");
 
-  console.log('✅ Roles created: Admin, Editor, Viewer, Moderator, User');
+  // 4. ASSIGN PERMISSIONS
+  const assignAll = async (roleId: string, slug: string) => {
+    for (const action of actions) {
+      await prisma.rolePermission.create({
+        data: { roleId, permissionId: allPermissions[slug][action].id },
+      });
+    }
+  };
 
-  // ───────────────────────────────────────────────
-  // 4. ASSIGN PERMISSIONS TO ROLES
-  // ───────────────────────────────────────────────
-  const assignPerm = async (roleId: string, permId: string) => {
-    await prisma.rolePermission.upsert({
-      where: { roleId_permissionId: { roleId, permissionId: permId } },
-      update: {},
-      create: { roleId, permissionId: permId },
+  const assignRead = async (roleId: string, slug: string) => {
+    await prisma.rolePermission.create({
+      data: { roleId, permissionId: allPermissions[slug]["READ"].id },
     });
   };
 
-  // Admin → ALL permissions on ALL modules
-  for (const modName of Object.keys(allPermissions)) {
-    for (const action of actions) {
-      await assignPerm(adminRole.id, allPermissions[modName][action].id);
-    }
+  // Admin -> everything
+  for (const slug of Object.keys(createdModules)) {
+    await assignAll(adminRole.id, slug);
   }
 
-  // Editor → READ/WRITE/UPDATE on users + read dashboard/roles/permissions
-  for (const perm of [
-    allPermissions['users']['READ'],
-    allPermissions['users']['WRITE'],
-    allPermissions['users']['UPDATE'],
-    allPermissions['dashboard']['READ'],
-    allPermissions['roles']['READ'],
-    allPermissions['permissions']['READ'],
+  // Manager -> everything except permissions/modules
+  for (const slug of [
+    "dashboard",
+    "users",
+    "roles",
+    "leads",
+    "tasks",
+    "reports",
+    "audit_logs",
+    "settings",
+    "portal",
   ]) {
-    await assignPerm(editorRole.id, perm.id);
+    await assignAll(managerRole.id, slug);
   }
 
-  // Viewer → READ on everything
-  for (const modName of Object.keys(allPermissions)) {
-    await assignPerm(viewerRole.id, allPermissions[modName]['READ'].id);
+  // Agent -> dashboard, leads, tasks (READ/WRITE/UPDATE), portal
+  for (const slug of ["dashboard", "portal"])
+    await assignRead(agentRole.id, slug);
+  for (const slug of ["leads", "tasks"]) {
+    await prisma.rolePermission.create({
+      data: {
+        roleId: agentRole.id,
+        permissionId: allPermissions[slug]["READ"].id,
+      },
+    });
+    await prisma.rolePermission.create({
+      data: {
+        roleId: agentRole.id,
+        permissionId: allPermissions[slug]["WRITE"].id,
+      },
+    });
+    await prisma.rolePermission.create({
+      data: {
+        roleId: agentRole.id,
+        permissionId: allPermissions[slug]["UPDATE"].id,
+      },
+    });
   }
 
-  // Moderator → READ+MANAGE users, READ audit-logs+dashboard
-  for (const perm of [
-    allPermissions['users']['READ'],
-    allPermissions['users']['MANAGE'],
-    allPermissions['audit-logs']['READ'],
-    allPermissions['dashboard']['READ'],
-  ]) {
-    await assignPerm(moderatorRole.id, perm.id);
-  }
+  // User -> dashboard, portal, leads, tasks (READ ONLY)
+  await assignRead(userRole.id, "dashboard");
+  await assignRead(userRole.id, "portal");
+  await assignRead(userRole.id, "leads");
+  await assignRead(userRole.id, "tasks");
 
-  // User → READ dashboard only
-  await assignPerm(userRole.id, allPermissions['dashboard']['READ'].id);
+  console.log("✅ Permissions assigned.");
 
-  console.log('✅ Permissions assigned to all roles');
-
-  // ───────────────────────────────────────────────
   // 5. USERS
-  // ───────────────────────────────────────────────
-  const superAdminEmail = process.env.SUPER_ADMIN_EMAIL || 'superadmin@rbac.com';
-  const superAdminPwd   = process.env.SUPER_ADMIN_PASSWORD || 'Admin@123';
+  const superAdmin = await createUser(
+    "superadmin@rbac.com",
+    "Super Administrator",
+    "Admin@123",
+    undefined,
+    true,
+  );
+  const admin = await createUser(
+    "admin@rbac.com",
+    "System Admin",
+    "Admin@123",
+    adminRole.id,
+  );
+  const manager = await createUser(
+    "manager@rbac.com",
+    "Saleh Manager",
+    "Manager@123",
+    managerRole.id,
+  );
+  const agent = await createUser(
+    "agent@rbac.com",
+    "Akash Agent",
+    "Agent@123",
+    agentRole.id,
+  );
+  const user = await createUser(
+    "user@rbac.com",
+    "Umme User",
+    "User@123",
+    userRole.id,
+  );
 
-  await createUser(superAdminEmail, 'Super Admin', superAdminPwd, undefined, true);
-  console.log(`✅ Super Admin : ${superAdminEmail} → ${superAdminPwd}`);
+  console.log("✅ Users created.");
 
-  await createUser('admin@rbac.com', 'Admin User', 'Admin@123', adminRole.id);
-  console.log('✅ Admin       : admin@rbac.com → Admin@123');
-
-  await createUser('editor@rbac.com', 'Alice Editor', 'Editor@123', editorRole.id);
-  console.log('✅ Editor      : editor@rbac.com → Editor@123');
-
-  await createUser('viewer@rbac.com', 'Bob Viewer', 'Viewer@123', viewerRole.id);
-  console.log('✅ Viewer      : viewer@rbac.com → Viewer@123');
-
-  await createUser('moderator@rbac.com', 'Carol Moderator', 'Mod@12345', moderatorRole.id);
-  console.log('✅ Moderator   : moderator@rbac.com → Mod@12345');
-
-  const regularUsers = [
-    { name: 'John Smith',   email: 'john.smith@rbac.com' },
-    { name: 'Emma Wilson',  email: 'emma.wilson@rbac.com' },
-    { name: 'Liam Johnson', email: 'liam.johnson@rbac.com' },
-    { name: 'Olivia Brown', email: 'olivia.brown@rbac.com' },
-    { name: 'Noah Davis',   email: 'noah.davis@rbac.com' },
-  ];
-  for (const u of regularUsers) {
-    await createUser(u.email, u.name, 'User@12345', userRole.id);
+  // 6. LEADS
+  const leadStatuses = [
+    "NEW",
+    "CONTACTED",
+    "QUALIFIED",
+    "LOST",
+    "WON",
+  ] as const;
+  for (let i = 1; i <= 10; i++) {
+    await prisma.lead.create({
+      data: {
+        name: `Lead ${i}`,
+        email: `lead${i}@example.com`,
+        phone: `+123456789${i}`,
+        company: `Company ${Math.ceil(i / 2)}`,
+        status: leadStatuses[Math.floor(Math.random() * leadStatuses.length)],
+        source: i % 2 === 0 ? "Website" : "External Referral",
+        assignedTo:
+          i % 3 === 0 ? manager.id : i % 3 === 1 ? agent.id : admin.id,
+      },
+    });
   }
-  console.log('✅ 5 regular users created → User@12345');
+  console.log("✅ Leads created.");
 
-  // ───────────────────────────────────────────────
-  // SUMMARY
-  // ───────────────────────────────────────────────
-  console.log('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-  console.log('✨ Seeding complete! Test accounts:');
-  console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-  console.log(`  🔑 Super Admin : ${superAdminEmail} → ${superAdminPwd}`);
-  console.log('  🔑 Admin       : admin@rbac.com         → Admin@123');
-  console.log('  🔑 Editor      : editor@rbac.com        → Editor@123');
-  console.log('  🔑 Viewer      : viewer@rbac.com        → Viewer@123');
-  console.log('  🔑 Moderator   : moderator@rbac.com     → Mod@12345');
-  console.log('  🔑 Users       : john.smith@rbac.com    → User@12345');
-  console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
+  // 7. TASKS
+  const taskStatuses = ["TODO", "IN_PROGRESS", "REVIEW", "DONE"] as const;
+  for (let i = 1; i <= 15; i++) {
+    await prisma.task.create({
+      data: {
+        title: `Task #${i}: ${i % 2 === 0 ? "Follow up with lead" : "Prepare report"}`,
+        description: `Description for task ${i}. High priority item.`,
+        status: taskStatuses[Math.floor(Math.random() * taskStatuses.length)],
+        dueDate: new Date(Date.now() + i * 24 * 60 * 60 * 1000),
+        assignedTo: i % 2 === 0 ? agent.id : manager.id,
+        createdBy: admin.id,
+      },
+    });
+  }
+  console.log("✅ Tasks created.");
+
+  // 8. SETTINGS
+  const settings = [
+    {
+      key: "site_name",
+      value: "Dynamic RBAC Platform",
+      description: "Public name of the site",
+    },
+    {
+      key: "maintenance_mode",
+      value: "false",
+      description: "Enable/Disable maintenance",
+    },
+    {
+      key: "allow_registration",
+      value: "true",
+      description: "Enable public user registration",
+    },
+    {
+      key: "api_rate_limit",
+      value: "1000",
+      description: "Requests per hour per user",
+    },
+  ];
+  for (const s of settings) {
+    await prisma.systemSetting.create({
+      data: { ...s, updatedBy: admin.id },
+    });
+  }
+  console.log("✅ Settings created.");
+
+  // 9. AUDIT LOGS
+  const logActions = [
+    { action: "LOGIN", mod: "auth" },
+    { action: "CREATE_USER", mod: "users" },
+    { action: "UPDATE_ROLE", mod: "roles" },
+    { action: "CREATE_LEAD", mod: "leads" },
+    { action: "UPDATE_TASK", mod: "tasks" },
+  ];
+  for (let i = 0; i < 20; i++) {
+    const act = logActions[Math.floor(Math.random() * logActions.length)];
+    await prisma.auditLog.create({
+      data: {
+        userId: [admin.id, manager.id, agent.id][Math.floor(Math.random() * 3)],
+        action: act.action,
+        module: act.mod,
+        targetType: act.mod,
+        ipAddress: `192.168.1.${100 + i}`,
+        userAgent:
+          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+        createdAt: new Date(
+          Date.now() - Math.random() * 7 * 24 * 60 * 60 * 1000,
+        ),
+      },
+    });
+  }
+  console.log("✅ Audit logs created.");
+
+  console.log("\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+  console.log("✨ Seeding complete! All modules are ready.");
+  console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+  console.log(`  🔑 Super Admin : superadmin@rbac.com -> Admin@123`);
+  console.log("  🔑 Admin       : admin@rbac.com      -> Admin@123");
+  console.log("  🔑 Manager     : manager@rbac.com    -> Manager@123");
+  console.log("  🔑 Agent       : agent@rbac.com      -> Agent@123");
+  console.log("  🔑 User        : user@rbac.com       -> User@123");
+  console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n");
 }
 
 main()
   .catch((e) => {
-    console.error('\n❌ Seeding failed:', e);
+    console.error("\n❌ Seeding failed:", e);
     process.exit(1);
   })
   .finally(async () => {

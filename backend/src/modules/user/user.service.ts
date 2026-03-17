@@ -28,16 +28,30 @@ const userSelect = {
   updatedAt: true,
 };
 
-const createUser = async (payload: ICreateUserPayload) => {
-  const existing = await prisma.user.findUnique({ where: { email: payload.email } });
+const createUser = async (payload: ICreateUserPayload & { roleId?: string }) => {
+  const { roleId, ...userData } = payload;
+  const existing = await prisma.user.findUnique({ where: { email: userData.email } });
   if (existing) {
     throw new AppError(status.CONFLICT, 'User with this email already exists.');
   }
 
-  const hashedPassword = await bcrypt.hash(payload.password, 12);
-  const user = await prisma.user.create({
-    data: { ...payload, password: hashedPassword },
-    select: userSelect,
+  const hashedPassword = await bcrypt.hash(userData.password, 12);
+  
+  const user = await prisma.$transaction(async (tx) => {
+    const newUser = await tx.user.create({
+      data: { ...userData, password: hashedPassword },
+      select: userSelect,
+    });
+
+    const targetRoleId = roleId || (await tx.role.findUnique({ where: { name: 'User' } }))?.id;
+
+    if (targetRoleId) {
+      await tx.userRole.create({
+        data: { userId: newUser.id, roleId: targetRoleId },
+      });
+    }
+
+    return newUser;
   });
 
   return user;
@@ -57,7 +71,21 @@ const getAllUsers = async (query: Record<string, unknown>) => {
     .where({ isDeleted: false })
     .sort()
     .paginate()
+    .include({
+      userRoles: {
+        include: {
+          role: true,
+        },
+      },
+    })
     .execute();
+
+  // Map userRoles to a singular role and roleId for frontend compatibility
+  result.data = result.data.map((user: any) => ({
+    ...user,
+    roleId: user.userRoles?.[0]?.roleId || null,
+    role: user.userRoles?.[0]?.role || null,
+  }));
 
   return result;
 };
@@ -85,12 +113,17 @@ const getUserById = async (id: string) => {
     throw new AppError(status.NOT_FOUND, 'User not found.');
   }
 
-  return user;
+  // Map userRoles to a singular role and roleId for frontend compatibility
+  return {
+    ...user,
+    roleId: (user as any).userRoles?.[0]?.roleId || null,
+    role: (user as any).userRoles?.[0]?.role || null,
+  };
 };
 
 const updateUser = async (id: string, payload: IUpdateUserPayload, requestUser: IRequestUser) => {
   // Users can only update their own profiles unless they're super admin
-  if (!requestUser.isSuperAdmin && requestUser.userId !== id) {
+  if (!requestUser.isSuperAdmin && requestUser.id !== id) {
     throw new AppError(status.FORBIDDEN, 'You can only update your own profile.');
   }
 
@@ -99,13 +132,30 @@ const updateUser = async (id: string, payload: IUpdateUserPayload, requestUser: 
     throw new AppError(status.NOT_FOUND, 'User not found.');
   }
 
-  const updated = await prisma.user.update({
-    where: { id },
-    data: payload,
-    select: userSelect,
+  const { roleId, ...userData } = payload;
+
+  const result = await prisma.$transaction(async (tx) => {
+    const updatedUser = await tx.user.update({
+      where: { id },
+      data: userData,
+      select: userSelect,
+    });
+
+    if (roleId) {
+      // For this simple case, we replace all existing roles with the new one
+      await tx.userRole.deleteMany({ where: { userId: id } });
+      await tx.userRole.create({
+        data: {
+          userId: id,
+          roleId: roleId,
+        },
+      });
+    }
+
+    return updatedUser;
   });
 
-  return updated;
+  return result;
 };
 
 const updateUserStatus = async (id: string, payload: IUpdateUserStatusPayload) => {
@@ -184,6 +234,17 @@ const removeRolesFromUser = async (id: string, payload: IAssignRolesPayload) => 
   return getUserById(id);
 };
 
+const getMinimalUsers = async () => {
+  return await prisma.user.findMany({
+    where: { isDeleted: false, status: 'ACTIVE' },
+    select: {
+      id: true,
+      name: true,
+    },
+    orderBy: { name: 'asc' },
+  });
+};
+
 export const UserService = {
   createUser,
   getAllUsers,
@@ -193,4 +254,5 @@ export const UserService = {
   softDeleteUser,
   assignRolesToUser,
   removeRolesFromUser,
+  getMinimalUsers,
 };

@@ -34,8 +34,7 @@ export const deletePermission = async (id: string): Promise<ApiResponse<void>> =
 };
 
 export const updateRolePermissions = async (roleId: string, permissionIds: string[]): Promise<ApiResponse<any>> => {
-  const response = await axiosInstance.post("/roles/assign-permissions", {
-    roleId,
+  const response = await axiosInstance.post(`/roles/${roleId}/permissions`, {
     permissionIds,
   });
   return response.data;

@@ -15,6 +15,10 @@ import {
   ChevronLeft,
   ChevronRight,
   Key,
+  Briefcase,
+  ClipboardList,
+  BarChart3,
+  Globe,
 } from "lucide-react";
 import { useAuth } from "@/providers/AuthProvider";
 import { useRBAC } from "@/components/auth/RBACGuard";
@@ -67,6 +71,27 @@ const menuItems: MenuItem[] = [
     requiredAction: "READ",
   },
   {
+    name: "Leads",
+    href: "/leads",
+    icon: Briefcase,
+    requiredModule: "leads",
+    requiredAction: "READ",
+  },
+  {
+    name: "Tasks",
+    href: "/tasks",
+    icon: ClipboardList,
+    requiredModule: "tasks",
+    requiredAction: "READ",
+  },
+  {
+    name: "Reports",
+    href: "/reports",
+    icon: BarChart3,
+    requiredModule: "reports",
+    requiredAction: "READ",
+  },
+  {
     name: "Audit Logs",
     href: "/audit-logs",
     icon: History,
@@ -77,13 +102,21 @@ const menuItems: MenuItem[] = [
     name: "Settings",
     href: "/settings",
     icon: Settings,
-    alwaysVisible: true,
+    requiredModule: "settings",
+    requiredAction: "READ",
+  },
+  {
+    name: "Customer Portal",
+    href: "/customer-portal",
+    icon: Globe,
+    requiredModule: "portal",
+    requiredAction: "READ",
   },
 ];
 
 const Sidebar = () => {
   const pathname = usePathname();
-  const { logout, user } = useAuth();
+  const { logout, user, settings } = useAuth();
   const { hasPermission, isSuperAdmin } = useRBAC();
   const [collapsed, setCollapsed] = React.useState(false);
 
@@ -110,7 +143,9 @@ const Sidebar = () => {
             <div className="h-8 w-8 bg-brand-primary rounded-lg flex items-center justify-center">
                <ShieldCheck className="text-white h-5 w-5" />
             </div>
-            <span className="font-onest font-bold text-xl text-[#1F232A]">RBAC</span>
+            <span className="font-onest font-bold text-xl text-[#1F232A]">
+              {settings?.site_name || "RBAC"}
+            </span>
           </div>
         )}
         <Button

@@ -10,6 +10,7 @@ export interface IUser {
     name: string;
   };
   isActive: boolean;
+  status: "ACTIVE" | "BLOCKED" | "DELETED";
   createdAt: string;
   updatedAt: string;
 }
@@ -36,5 +37,10 @@ export const updateUser = async (id: string, data: any): Promise<ApiResponse<IUs
 
 export const deleteUser = async (id: string): Promise<ApiResponse<void>> => {
   const response = await axiosInstance.delete(`/users/${id}`);
+  return response.data;
+};
+
+export const getMinimalUsers = async (): Promise<ApiResponse<{ id: string; name: string }[]>> => {
+  const response = await axiosInstance.get("/users/minimal");
   return response.data;
 };

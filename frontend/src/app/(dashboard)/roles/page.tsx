@@ -121,7 +121,7 @@ const RolesPage = () => {
   // Handlers
   const handleOpenPermissions = (role: IRole) => {
     setSelectedRole(role);
-    setSelectedPermissions(role.permissions?.map((p: any) => p.permissionId) || []);
+    setSelectedPermissions(role.permissions?.map((p: any) => p.id) || []);
     setIsPermissionDialogOpen(true);
   };
 
@@ -148,12 +148,11 @@ const RolesPage = () => {
     }
   };
 
-  const togglePermission = (permissionId: string) => {
-    setSelectedPermissions((prev) =>
-      prev.includes(permissionId)
-        ? prev.filter((id) => id !== permissionId)
-        : [...prev, permissionId]
-    );
+  const toggleModulePermissions = (permissionIds: string[], checked: boolean) => {
+    setSelectedPermissions((prev) => {
+      const otherPermissions = prev.filter((id) => !permissionIds.includes(id));
+      return checked ? [...otherPermissions, ...permissionIds] : otherPermissions;
+    });
   };
 
   const handleSavePermissions = () => {
@@ -310,61 +309,113 @@ const RolesPage = () => {
 
         {/* Permissions Dialog */}
         <Dialog open={isPermissionDialogOpen} onOpenChange={setIsPermissionDialogOpen}>
-          <DialogContent className="sm:max-w-4xl max-h-[90vh] flex flex-col p-0 overflow-hidden rounded-[32px]">
-            <DialogHeader className="p-8 border-b border-gray-100">
-              <DialogTitle className="text-2xl font-bold font-onest text-[#1F232A]">
-                Permissions for {selectedRole?.name}
-              </DialogTitle>
+          <DialogContent className="sm:max-w-[90vw] lg:max-w-6xl max-h-[90vh] flex flex-col p-0 overflow-hidden rounded-[32px] border-none shadow-2xl">
+            <DialogHeader className="p-8 border-b border-gray-100 bg-white sticky top-0 z-10">
+              <div className="flex items-center justify-between">
+                <div>
+                  <DialogTitle className="text-2xl font-bold font-onest text-[#1F232A]">
+                    Manage Permissions
+                  </DialogTitle>
+                  <DialogDescription className="text-brand-primary font-medium">
+                    Setting permissions for {selectedRole?.name}
+                  </DialogDescription>
+                </div>
+                <div className="text-right">
+                  <Badge variant="secondary" className="bg-brand-primary/10 text-brand-primary border-none px-4 py-1.5 rounded-full text-sm">
+                    {selectedPermissions.length} Permissions Selected
+                  </Badge>
+                </div>
+              </div>
             </DialogHeader>
 
-            <ScrollArea className="flex-1 p-8">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                {modules.map((module: any) => (
-                  <div key={module.id} className="space-y-4">
-                    <h3 className="font-onest font-bold text-lg text-[#1F232A] flex items-center gap-2">
-                      <Lock size={18} className="text-brand-primary" />
-                      {module.name}
-                    </h3>
-                    <div className="space-y-3 bg-gray-50/50 p-4 rounded-2xl border border-gray-100">
-                      {(module.permissions ?? []).map((permission: any) => (
-                        <div key={permission.id} className="flex items-center gap-3">
-                          <Checkbox
-                            id={permission.id}
-                            checked={selectedPermissions.includes(permission.id)}
-                            onCheckedChange={() => togglePermission(permission.id)}
-                            className="h-5 w-5 rounded-md border-gray-300 data-[state=checked]:bg-brand-primary data-[state=checked]:border-brand-primary"
-                          />
-                          <label
-                            htmlFor={permission.id}
-                            className="text-sm font-medium text-[#404857] cursor-pointer"
-                          >
-                            {permission.name}
-                          </label>
+            <ScrollArea className="flex-1 overflow-y-auto bg-[#F8F9FB]">
+              <div className="p-8">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {modules.map((module: any) => {
+                    const modulePermissionIds = (module.permissions ?? []).map((p: any) => p.id);
+                    const allSelected = modulePermissionIds.length > 0 && 
+                      modulePermissionIds.every((id: string) => selectedPermissions.includes(id));
+                    const someSelected = modulePermissionIds.some((id: string) => selectedPermissions.includes(id)) && !allSelected;
+
+                    return (
+                      <div key={module.id} className="bg-white rounded-[24px] border border-gray-100 shadow-[0px_2px_8px_rgba(0,0,0,0.02)] flex flex-col overflow-hidden">
+                        <div className="p-5 border-b border-gray-50 bg-gray-50/30 flex items-center justify-between">
+                          <h3 className="font-onest font-bold text-[#1F232A] flex items-center gap-2.5">
+                            <div className="w-8 h-8 rounded-lg bg-brand-primary/10 flex items-center justify-center text-brand-primary">
+                              <Lock size={16} />
+                            </div>
+                            {module.name}
+                          </h3>
+                          <div className="flex items-center gap-2">
+                            <Label htmlFor={`select-all-${module.id}`} className="text-[10px] font-bold uppercase tracking-wider text-[#9BA0AB] cursor-pointer">
+                              Select All
+                            </Label>
+                            <Checkbox
+                              id={`select-all-${module.id}`}
+                              checked={allSelected}
+                              onCheckedChange={(checked) => toggleModulePermissions(modulePermissionIds, !!checked)}
+                              className={cn(
+                                "h-4 w-4 rounded border-gray-300",
+                                someSelected && "data-[state=unchecked]:bg-brand-primary/20 data-[state=unchecked]:border-brand-primary/20"
+                              )}
+                            />
+                          </div>
                         </div>
-                      ))}
-                      {(module.permissions?.length ?? 0) === 0 && (
-                        <p className="text-xs text-[#9BA0AB]">No permissions defined.</p>
-                      )}
-                    </div>
-                  </div>
-                ))}
+                        <div className="p-5 space-y-4">
+                          {(module.permissions ?? []).map((permission: any) => (
+                            <div key={permission.id} className="flex items-center group cursor-pointer" onClick={() => {
+                              const checked = selectedPermissions.includes(permission.id);
+                              toggleModulePermissions([permission.id], !checked);
+                            }}>
+                              <Checkbox
+                                id={permission.id}
+                                checked={selectedPermissions.includes(permission.id)}
+                                onCheckedChange={(checked) => toggleModulePermissions([permission.id], !!checked)}
+                                className="h-5 w-5 rounded-md border-gray-300 data-[state=checked]:bg-brand-primary data-[state=checked]:border-brand-primary transition-all group-hover:border-brand-primary"
+                              />
+                              <label
+                                htmlFor={permission.id}
+                                className="ml-3 text-sm font-medium text-[#404857] cursor-pointer flex-1 group-hover:text-brand-primary transition-colors"
+                              >
+                                {permission.name}
+                              </label>
+                            </div>
+                          ))}
+                          {(module.permissions?.length ?? 0) === 0 && (
+                            <div className="flex flex-col items-center justify-center py-6 text-center">
+                              <ShieldCheck size={24} className="text-gray-200 mb-2" />
+                              <p className="text-xs font-medium text-[#9BA0AB]">No permissions defined for this module.</p>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
             </ScrollArea>
 
-            <DialogFooter className="p-8 border-t border-gray-100 bg-gray-50/50">
+            <DialogFooter className="p-8 border-t border-gray-100 bg-white sticky bottom-0 z-10 flex items-center justify-end gap-4">
               <Button
-                variant="outline"
+                variant="ghost"
                 onClick={() => setIsPermissionDialogOpen(false)}
-                className="rounded-xl h-11 px-8 border-gray-200"
+                className="rounded-xl h-11 px-8 text-[#666C79] hover:bg-gray-50 font-medium"
               >
                 Cancel
               </Button>
               <Button
                 onClick={handleSavePermissions}
-                className="bg-brand-primary hover:bg-brand-dark text-white rounded-xl h-11 px-8"
+                className="bg-brand-primary hover:bg-brand-dark text-white rounded-xl h-12 px-10 font-bold shadow-lg shadow-brand-primary/20 transition-all hover:scale-[1.02] active:scale-[0.98]"
                 disabled={updatePermissionsMutation.isPending}
               >
-                {updatePermissionsMutation.isPending ? <Loader2 className="animate-spin" /> : "Save Changes"}
+                {updatePermissionsMutation.isPending ? (
+                  <div className="flex items-center gap-2">
+                    <Loader2 className="animate-spin h-5 w-5" />
+                    <span>Saving...</span>
+                  </div>
+                ) : (
+                  "Save Permissions"
+                )}
               </Button>
             </DialogFooter>
           </DialogContent>

@@ -60,6 +60,7 @@ const PermissionsPage = () => {
   const [formData, setFormData] = useState({
     name: "",
     slug: "",
+    action: "",
     moduleId: "",
   });
 
@@ -110,7 +111,12 @@ const PermissionsPage = () => {
   // Handlers
   const handleEditClick = (permission: IPermission) => {
     setSelectedPermission(permission);
-    setFormData({ name: permission.name, slug: permission.slug, moduleId: permission.moduleId });
+    setFormData({ 
+      name: permission.name, 
+      slug: permission.slug, 
+      action: permission.action,
+      moduleId: permission.moduleId 
+    });
     setIsPermissionModalOpen(true);
   };
 
@@ -138,7 +144,7 @@ const PermissionsPage = () => {
           </p>
         </div>
         <Button 
-          onClick={() => { setSelectedPermission(null); setFormData({ name: "", slug: "", moduleId: "" }); setIsPermissionModalOpen(true); }}
+          onClick={() => { setSelectedPermission(null); setFormData({ name: "", slug: "", action: "", moduleId: "" }); setIsPermissionModalOpen(true); }}
           className="bg-brand-primary hover:bg-brand-dark text-white rounded-xl h-11 flex gap-2"
         >
           <Plus size={20} /> Add New Permission
@@ -163,6 +169,7 @@ const PermissionsPage = () => {
             <TableRow className="hover:bg-transparent">
               <TableHead className="font-semibold text-[#1F232A] h-14">Permission Name</TableHead>
               <TableHead className="font-semibold text-[#1F232A]">Slug</TableHead>
+              <TableHead className="font-semibold text-[#1F232A]">Action</TableHead>
               <TableHead className="font-semibold text-[#1F232A]">Module</TableHead>
               <TableHead className="text-right font-semibold text-[#1F232A]">Actions</TableHead>
             </TableRow>
@@ -184,6 +191,11 @@ const PermissionsPage = () => {
                     </div>
                   </TableCell>
                   <TableCell className="text-[#666C79] font-mono text-xs">{permission.slug}</TableCell>
+                  <TableCell>
+                    <Badge variant="outline" className="border-gray-200 text-gray-600 rounded-lg px-2 py-0.5 text-[10px] font-bold">
+                      {permission.action}
+                    </Badge>
+                  </TableCell>
                   <TableCell>
                     <Badge variant="secondary" className="bg-blue-50/50 text-blue-600 border-none rounded-lg px-3 py-1 font-medium">
                       {permission.module?.name || "N/A"}
@@ -255,6 +267,24 @@ const PermissionsPage = () => {
                 className="rounded-xl font-mono text-sm"
                 required
               />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="perm-action">Action</Label>
+              <Select 
+                value={formData.action} 
+                onValueChange={(val: string | null) => setFormData({ ...formData, action: val ?? "" })}
+              >
+                <SelectTrigger className="rounded-xl">
+                  <SelectValue placeholder="Select an action" />
+                </SelectTrigger>
+                <SelectContent className="rounded-xl">
+                  <SelectItem value="READ">READ</SelectItem>
+                  <SelectItem value="CREATE">CREATE</SelectItem>
+                  <SelectItem value="UPDATE">UPDATE</SelectItem>
+                  <SelectItem value="DELETE">DELETE</SelectItem>
+                  <SelectItem value="MANAGE">MANAGE</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
             <div className="space-y-2">
               <Label htmlFor="perm-module">System Module</Label>

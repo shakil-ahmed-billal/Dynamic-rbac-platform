@@ -37,16 +37,19 @@ const getResolvedPermissions = async (userId: string) => {
 
   if (!userWithRoles) return [];
 
-  const rolePermissionsMap = new Map<string, any>();
+  const effectivePermissions = new Map<string, any>();
+  
+  // 1. Roll up role permissions
   userWithRoles.userRoles.forEach((ur) => {
     ur.role.rolePermissions.forEach((rp) => {
       const p = rp.permission;
-      const key = `${p.module.name}.${p.action.toLowerCase()}`;
-      rolePermissionsMap.set(key, {
+      const key = `${p.module.slug}.${p.action.toUpperCase()}`;
+      effectivePermissions.set(key, {
         id: p.id,
         action: p.action,
         moduleId: p.moduleId,
         moduleName: p.module.name,
+        moduleSlug: p.module.slug,
       });
     });
   });
@@ -59,21 +62,18 @@ const getResolvedPermissions = async (userId: string) => {
     },
   });
 
-  const effectivePermissions = new Map(rolePermissionsMap);
-
   userOverrides.forEach((override) => {
     const p = override.permission;
-    const key = `${p.module.name}.${p.action.toLowerCase()}`;
+    const key = `${p.module.slug}.${p.action.toUpperCase()}`;
     if (override.granted) {
-      // Add or ensure it's there
       effectivePermissions.set(key, {
         id: p.id,
         action: p.action,
         moduleId: p.moduleId,
         moduleName: p.module.name,
+        moduleSlug: p.module.slug,
       });
     } else {
-      // Revoke
       effectivePermissions.delete(key);
     }
   });
@@ -85,6 +85,14 @@ const getResolvedPermissions = async (userId: string) => {
 const register = async (payload: IRegisterPayload) => {
   const { name, email, password } = payload;
 
+  const registrationSetting = await prisma.systemSetting.findUnique({
+    where: { key: 'allow_registration' },
+  });
+
+  if (registrationSetting?.value === 'false') {
+    throw new AppError(status.FORBIDDEN, 'Public registration is currently disabled.');
+  }
+
   const existingUser = await prisma.user.findUnique({ where: { email } });
   if (existingUser) {
     throw new AppError(status.CONFLICT, 'User with this email already exists.');
@@ -92,8 +100,19 @@ const register = async (payload: IRegisterPayload) => {
 
   const hashedPassword = await bcrypt.hash(password, 12);
 
-  const user = await prisma.user.create({
-    data: { name, email, password: hashedPassword },
+  const user = await prisma.$transaction(async (tx) => {
+    const newUser = await tx.user.create({
+      data: { name, email, password: hashedPassword },
+    });
+
+    const userRole = await tx.role.findUnique({ where: { name: 'User' } });
+    if (userRole) {
+      await tx.userRole.create({
+        data: { userId: newUser.id, roleId: userRole.id },
+      });
+    }
+
+    return newUser;
   });
 
   const tokenPayload = { userId: user.id, email: user.email };
@@ -135,7 +154,7 @@ const login = async (payload: ILoginPayload) => {
 
 const getMe = async (requestUser: IRequestUser) => {
   const user = await prisma.user.findUnique({
-    where: { id: requestUser.userId },
+    where: { id: requestUser.id },
     select: {
       id: true,
       name: true,
@@ -201,7 +220,7 @@ const changePassword = async (
   requestUser: IRequestUser,
   payload: IChangePasswordPayload,
 ) => {
-  const user = await prisma.user.findUnique({ where: { id: requestUser.userId } });
+  const user = await prisma.user.findUnique({ where: { id: requestUser.id } });
   if (!user) {
     throw new AppError(status.NOT_FOUND, 'User not found.');
   }

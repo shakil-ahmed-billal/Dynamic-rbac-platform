@@ -1,0 +1,116 @@
+
+> frontend@0.1.0 lint C:\Shakil Dev\Clone Projact\Dynamic-rbac-platform\frontend
+> eslint
+
+
+C:\Shakil Dev\Clone Projact\Dynamic-rbac-platform\frontend\src\app\(auth)\login\page.tsx
+  15:10  warning  'Button' is defined but never used        @typescript-eslint/no-unused-vars
+  16:10  warning  'Input' is defined but never used         @typescript-eslint/no-unused-vars
+  17:10  warning  'Label' is defined but never used         @typescript-eslint/no-unused-vars
+  18:10  warning  'Checkbox' is defined but never used      @typescript-eslint/no-unused-vars
+  43:22  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Shakil Dev\Clone Projact\Dynamic-rbac-platform\frontend\src\app\(auth)\register\page.tsx
+  37:22  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Shakil Dev\Clone Projact\Dynamic-rbac-platform\frontend\src\app\(dashboard)\audit-logs\page.tsx
+   5:27  warning  'IAuditLog' is defined but never used  @typescript-eslint/no-unused-vars
+  15:26  warning  'History' is defined but never used    @typescript-eslint/no-unused-vars
+
+C:\Shakil Dev\Clone Projact\Dynamic-rbac-platform\frontend\src\app\(dashboard)\dashboard\page.tsx
+  25:23  error  `'` can be escaped with `&apos;`, `&lsquo;`, `&#39;`, `&rsquo;`  react/no-unescaped-entities
+
+C:\Shakil Dev\Clone Projact\Dynamic-rbac-platform\frontend\src\app\(dashboard)\modules\page.tsx
+  41:10  warning  'cn' is defined but never used            @typescript-eslint/no-unused-vars
+  71:22  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  75:52  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  81:22  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  91:22  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Shakil Dev\Clone Projact\Dynamic-rbac-platform\frontend\src\app\(dashboard)\permissions\page.tsx
+   50:10  warning  'cn' is defined but never used            @typescript-eslint/no-unused-vars
+   87:22  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   91:52  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   97:22  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  107:22  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Shakil Dev\Clone Projact\Dynamic-rbac-platform\frontend\src\app\(dashboard)\roles\page.tsx
+   47:10  warning  'cn' is defined but never used            @typescript-eslint/no-unused-vars
+   85:22  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   89:52  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   96:22  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  107:22  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  124:54  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  322:39  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  329:68  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Shakil Dev\Clone Projact\Dynamic-rbac-platform\frontend\src\app\(dashboard)\users\page.tsx
+   97:22  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  101:52  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  108:22  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  119:22  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  363:39  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  423:39  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Shakil Dev\Clone Projact\Dynamic-rbac-platform\frontend\src\components\permissions\PermissionEditor.tsx
+   83:20  error    Unexpected any. Specify a different type                                                                                                                                                                                                             @typescript-eslint/no-explicit-any
+   93:20  error    Unexpected any. Specify a different type                                                                                                                                                                                                             @typescript-eslint/no-explicit-any
+   97:9   warning  The 'allPermissions' logical expression could make the dependencies of useMemo Hook (at line 107) change on every render. Move it inside the useMemo callback. Alternatively, wrap the initialization of 'allPermissions' in its own useMemo() Hook  react-hooks/exhaustive-deps
+   97:25  error    Unexpected any. Specify a different type                                                                                                                                                                                                             @typescript-eslint/no-explicit-any
+   97:52  error    Unexpected any. Specify a different type                                                                                                                                                                                                             @typescript-eslint/no-explicit-any
+  112:38  error    Unexpected any. Specify a different type                                                                                                                                                                                                             @typescript-eslint/no-explicit-any
+
+C:\Shakil Dev\Clone Projact\Dynamic-rbac-platform\frontend\src\components\ui\textarea.tsx
+  5:18  error  An interface declaring no members is equivalent to its supertype  @typescript-eslint/no-empty-object-type
+
+C:\Shakil Dev\Clone Projact\Dynamic-rbac-platform\frontend\src\lib\axios\axiosInstance.ts
+  2:10  warning  'ApiResponse' is defined but never used  @typescript-eslint/no-unused-vars
+
+C:\Shakil Dev\Clone Projact\Dynamic-rbac-platform\frontend\src\lib\jwtUtils.ts
+  13:14  warning  'error' is defined but never used  @typescript-eslint/no-unused-vars
+
+C:\Shakil Dev\Clone Projact\Dynamic-rbac-platform\frontend\src\providers\AuthProvider.tsx
+   3:44  warning  'useEffect' is defined but never used     @typescript-eslint/no-unused-vars
+   3:55  warning  'useState' is defined but never used      @typescript-eslint/no-unused-vars
+  10:9   error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  35:14  warning  'error' is defined but never used         @typescript-eslint/no-unused-vars
+
+C:\Shakil Dev\Clone Projact\Dynamic-rbac-platform\frontend\src\services\auditLog.services.ts
+  14:19  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  15:14  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  21:48  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Shakil Dev\Clone Projact\Dynamic-rbac-platform\frontend\src\services\auth.services.ts
+  3:39  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  8:42  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Shakil Dev\Clone Projact\Dynamic-rbac-platform\frontend\src\services\permission.services.ts
+  16:50   error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  21:46   error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  26:58   error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  36:107  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Shakil Dev\Clone Projact\Dynamic-rbac-platform\frontend\src\services\role.services.ts
+   9:16  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  14:44  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  19:40  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  24:52  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Shakil Dev\Clone Projact\Dynamic-rbac-platform\frontend\src\services\systemModule.services.ts
+   8:16  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  13:46  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  18:42  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  23:54  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Shakil Dev\Clone Projact\Dynamic-rbac-platform\frontend\src\services\user.services.ts
+  17:44  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  22:40  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  32:52  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Shakil Dev\Clone Projact\Dynamic-rbac-platform\frontend\src\services\userPermission.services.ts
+  42:24  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  52:24  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+✖ 68 problems (53 errors, 15 warnings)
+
+ ELIFECYCLE  Command failed with exit code 1.

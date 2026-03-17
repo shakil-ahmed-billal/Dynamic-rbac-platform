@@ -22,6 +22,7 @@ import QueryProvider from "@/providers/QueryProvider";
 import { AuthProvider } from "@/providers/AuthProvider";
 
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { DynamicTitle } from "@/components/layout/DynamicTitle";
 
 export default function RootLayout({
   children,
@@ -29,13 +30,15 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <body
         className={`${onest.variable} ${inter.variable} antialiased`}
+        suppressHydrationWarning
       >
         <QueryProvider>
           <AuthProvider>
             <TooltipProvider>
+              <DynamicTitle />
               {children}
               <Toaster position="top-center" />
             </TooltipProvider>

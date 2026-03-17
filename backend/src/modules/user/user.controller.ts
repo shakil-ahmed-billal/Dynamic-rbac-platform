@@ -3,9 +3,20 @@ import status from 'http-status';
 import { catchAsync } from '../../utils/catchAsync';
 import { sendResponse } from '../../utils/sendResponse';
 import { UserService } from './user.service';
+import { AuditLogService } from '../auditLog/auditLog.service';
 
 const createUser = catchAsync(async (req: Request, res: Response) => {
   const result = await UserService.createUser(req.body);
+  
+  await AuditLogService.createAuditLog({
+    userId: req.user!.id,
+    action: 'USER_CREATED',
+    module: 'users',
+    targetId: result.id,
+    newData: req.body,
+    ipAddress: req.ip,
+  });
+
   sendResponse(res, {
     httpStatusCode: status.CREATED,
     success: true,
@@ -37,6 +48,16 @@ const getUserById = catchAsync(async (req: Request, res: Response) => {
 
 const updateUser = catchAsync(async (req: Request, res: Response) => {
   const result = await UserService.updateUser(req.params.id as string, req.body, req.user!);
+  
+  await AuditLogService.createAuditLog({
+    userId: req.user!.id,
+    action: 'USER_UPDATED',
+    module: 'users',
+    targetId: req.params.id as string,
+    newData: req.body,
+    ipAddress: req.ip,
+  });
+
   sendResponse(res, {
     httpStatusCode: status.OK,
     success: true,
@@ -47,6 +68,16 @@ const updateUser = catchAsync(async (req: Request, res: Response) => {
 
 const updateUserStatus = catchAsync(async (req: Request, res: Response) => {
   const result = await UserService.updateUserStatus(req.params.id as string, req.body);
+  
+  await AuditLogService.createAuditLog({
+    userId: req.user!.id,
+    action: 'USER_STATUS_UPDATED',
+    module: 'users',
+    targetId: req.params.id as string,
+    newData: req.body,
+    ipAddress: req.ip,
+  });
+
   sendResponse(res, {
     httpStatusCode: status.OK,
     success: true,
@@ -57,6 +88,15 @@ const updateUserStatus = catchAsync(async (req: Request, res: Response) => {
 
 const softDeleteUser = catchAsync(async (req: Request, res: Response) => {
   const result = await UserService.softDeleteUser(req.params.id as string);
+  
+  await AuditLogService.createAuditLog({
+    userId: req.user!.id,
+    action: 'USER_DELETED',
+    module: 'users',
+    targetId: req.params.id as string,
+    ipAddress: req.ip,
+  });
+
   sendResponse(res, {
     httpStatusCode: status.OK,
     success: true,
@@ -67,6 +107,16 @@ const softDeleteUser = catchAsync(async (req: Request, res: Response) => {
 
 const assignRolesToUser = catchAsync(async (req: Request, res: Response) => {
   const result = await UserService.assignRolesToUser(req.params.id as string, req.body);
+  
+  await AuditLogService.createAuditLog({
+    userId: req.user!.id,
+    action: 'ROLES_ASSIGNED_TO_USER',
+    module: 'users',
+    targetId: req.params.id as string,
+    newData: req.body,
+    ipAddress: req.ip,
+  });
+
   sendResponse(res, {
     httpStatusCode: status.OK,
     success: true,
@@ -85,6 +135,16 @@ const removeRolesFromUser = catchAsync(async (req: Request, res: Response) => {
   });
 });
 
+const getMinimalUsers = catchAsync(async (req: Request, res: Response) => {
+  const result = await UserService.getMinimalUsers();
+  sendResponse(res, {
+    httpStatusCode: status.OK,
+    success: true,
+    message: 'Minimal user list retrieved successfully.',
+    data: result,
+  });
+});
+
 export const UserController = {
   createUser,
   getAllUsers,
@@ -94,4 +154,5 @@ export const UserController = {
   softDeleteUser,
   assignRolesToUser,
   removeRolesFromUser,
+  getMinimalUsers,
 };

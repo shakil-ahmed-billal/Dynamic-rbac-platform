@@ -20,6 +20,7 @@ interface CheckAuthOptions {
   requireSuperAdmin?: boolean;
   roles?: string[];
   permissions?: { module: string; action: string }[];
+  permissionMode?: 'ALL' | 'ANY';
 }
 
 export const checkAuth = (options: CheckAuthOptions = {}) =>
@@ -81,7 +82,7 @@ export const checkAuth = (options: CheckAuthOptions = {}) =>
 
       // Set user on request
       req.user = {
-        userId: user.id,
+        id: user.id,
         email: user.email,
         isSuperAdmin: user.isSuperAdmin,
         roles: userRoleNames,
@@ -111,35 +112,46 @@ export const checkAuth = (options: CheckAuthOptions = {}) =>
 
       // Permission check — using effective permissions (role defaults + user-level overrides)
       if (options.permissions && options.permissions.length > 0) {
-        // Role-based permissions
         const rolePermissionsMap = new Map<string, boolean>();
-        user.userRoles.flatMap((ur: any) =>
+        
+        // 1. Role-based permissions
+        user.userRoles.forEach((ur: any) => {
           ur.role.rolePermissions.forEach((rp: any) => {
-            const key = `${rp.permission.module.name}.${rp.permission.action}`;
-            rolePermissionsMap.set(key, true);
-          }),
-        );
+            if (rp.permission?.module?.slug) {
+              const key = `${rp.permission.module.slug}.${rp.permission.action.toUpperCase()}`;
+              rolePermissionsMap.set(key, true);
+            }
+          });
+        });
 
-        // Apply user-specific overrides
+        // 2. Apply user-specific overrides
         const userOverrides = await prisma.userPermission.findMany({
           where: { userId: user.id },
           include: { permission: { include: { module: true } } },
         });
 
         userOverrides.forEach((override: any) => {
-          const key = `${override.permission.module.name}.${override.permission.action}`;
-          if (override.granted) {
-            rolePermissionsMap.set(key, true);
-          } else {
-            rolePermissionsMap.delete(key);
+          if (override.permission?.module?.slug) {
+            const key = `${override.permission.module.slug}.${override.permission.action.toUpperCase()}`;
+            if (override.granted) {
+              rolePermissionsMap.set(key, true);
+            } else {
+              rolePermissionsMap.delete(key);
+            }
           }
         });
 
-        const hasAllPermissions = options.permissions.every((required) =>
-          rolePermissionsMap.has(`${required.module}.${required.action}`),
-        );
+        const isAllowed = options.permissionMode === 'ANY'
+          ? options.permissions.some((p) => rolePermissionsMap.has(`${p.module}.${p.action.toUpperCase()}`))
+          : options.permissions.every((p) => rolePermissionsMap.has(`${p.module}.${p.action.toUpperCase()}`));
 
-        if (!hasAllPermissions) {
+        console.log(`[DEBUG] Permission Check:`);
+        console.log(` - User: ${user.email}`);
+        console.log(` - Required: ${JSON.stringify(options.permissions)} (Mode: ${options.permissionMode || 'ALL'})`);
+        console.log(` - Effective Keys: ${Array.from(rolePermissionsMap.keys()).join(', ')}`);
+        console.log(` - Result: ${isAllowed}`);
+
+        if (!isAllowed) {
           throw new AppError(status.FORBIDDEN, 'Forbidden! Insufficient permissions.');
         }
       }

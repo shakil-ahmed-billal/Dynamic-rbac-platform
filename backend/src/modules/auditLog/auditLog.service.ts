@@ -15,6 +15,7 @@ const getAllAuditLogs = async (query: Record<string, unknown>) => {
     .filter()
     .sort()
     .paginate()
+    .include({ user: { select: { id: true, name: true, email: true } } })
     .execute();
 
   return result;
