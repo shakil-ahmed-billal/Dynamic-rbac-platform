@@ -1,34 +1,34 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from 'next/server';
+import type { NextRequest } from 'next/server';
 
-const AUTH_ROUTES = ["/login", "/register"];
-const PROTECTED_ROUTES = ["/dashboard", "/users", "/roles", "/permissions", "/modules", "/settings"];
+// List of routes that require authentication
+const protectedRoutes = ['/dashboard', '/users', '/roles', '/permissions', '/modules', '/audit-logs', '/leads', '/tasks', '/reports', '/settings', '/customer-portal'];
+// List of routes only for unauthenticated users
+const authRoutes = ['/login', '/register', '/forgot-password'];
 
 export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
-  const accessToken = request.cookies.get("accessToken")?.value;
+  
+  // Check for refreshToken in cookies (since it's httpOnly and stored by the browser)
+  // We use refreshToken as a proxy for 'is logged in' because accessToken is in memory
+  const refreshToken = request.cookies.get('refreshToken')?.value;
+  const isAuth = !!refreshToken;
 
-  const isAuthRoute = AUTH_ROUTES.some(route => pathname.startsWith(route));
-  const isProtectedRoute = PROTECTED_ROUTES.some(route => pathname.startsWith(route)) || pathname === "/";
-
-  // Redirect to login if accessing protected route without token
-  if (isProtectedRoute && !accessToken) {
-    const url = new URL("/login", request.url);
-    url.searchParams.set("redirect", pathname);
+  // 1. Redirect unauthenticated users trying to access protected routes
+  if (!isAuth && protectedRoutes.some(route => pathname.startsWith(route))) {
+    const url = new URL('/login', request.url);
+    url.searchParams.set('redirect', pathname);
     return NextResponse.redirect(url);
   }
 
-  // Redirect to dashboard if accessing auth route with token
-  if (isAuthRoute && accessToken) {
-    return NextResponse.redirect(new URL("/dashboard", request.url));
+  // 2. Redirect authenticated users away from auth pages (login/register)
+  if (isAuth && authRoutes.some(route => pathname.startsWith(route))) {
+    return NextResponse.redirect(new URL('/dashboard', request.url));
   }
 
-  // Handle root route
-  if (pathname === "/") {
-    if (accessToken) {
-      return NextResponse.redirect(new URL("/dashboard", request.url));
-    } else {
-      return NextResponse.redirect(new URL("/login", request.url));
-    }
+  // 3. Root redirect
+  if (pathname === '/') {
+    return NextResponse.redirect(new URL(isAuth ? '/dashboard' : '/login', request.url));
   }
 
   return NextResponse.next();
@@ -36,14 +36,14 @@ export function proxy(request: NextRequest) {
 
 export const config = {
   matcher: [
-    "/",
-    "/dashboard/:path*",
-    "/users/:path*",
-    "/roles/:path*",
-    "/permissions/:path*",
-    "/modules/:path*",
-    "/settings/:path*",
-    "/login",
-    "/register",
+    /*
+     * Match all request paths except for the ones starting with:
+     * - api (API routes)
+     * - _next/static (static files)
+     * - _next/image (image optimization files)
+     * - favicon.ico (favicon file)
+     * - images (public images)
+     */
+    '/((?!api|_next/static|_next/image|favicon.ico|images).*)',
   ],
 };

@@ -320,7 +320,7 @@ async function main() {
   const settings = [
     {
       key: "site_name",
-      value: "Dynamic RBAC Platform",
+      value: "RBAC",
       description: "Public name of the site",
     },
     {

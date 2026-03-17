@@ -12,6 +12,9 @@ import router from "./routes";
 
 const app: Application = express();
 
+// Trust proxy for secure cookies behind load balancers (Vercel/Railway)
+app.set("trust proxy", 1);
+
 // CORS configuration
 app.use(
   cors({

@@ -67,6 +67,7 @@ export const RBACGuard: React.FC<RBACGuardProps> = ({
   requiredAction = "READ",
   fallback,
 }) => {
+  const router = useRouter();
   const { user, isLoading } = useAuth();
   const { hasPermission } = useRBAC();
 
@@ -89,8 +90,19 @@ export const RBACGuard: React.FC<RBACGuardProps> = ({
 
   const isAllowed = hasPermission(requiredModule, requiredAction);
 
+  React.useEffect(() => {
+    if (!isLoading && user && !isAllowed && !fallback) {
+      router.push("/403");
+    }
+  }, [isLoading, user, isAllowed, fallback, router]);
+
   if (!isAllowed) {
-    return <>{fallback || <DefaultFallback />}</>;
+    if (fallback) return <>{fallback}</>;
+    return (
+      <div className="flex items-center justify-center h-[50vh]">
+        <Loader2 className="animate-spin text-brand-primary h-8 w-8" />
+      </div>
+    );
   }
 
   return <>{children}</>;

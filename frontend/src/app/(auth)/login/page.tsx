@@ -53,7 +53,7 @@ const LoginForm = () => {
       <div className="relative flex-1 flex flex-col items-center justify-center p-8 lg:p-12">
         {/* Logo */}
         <div className="absolute top-8 left-8 flex items-center gap-2">
-          <div className="w-9 h-9 rounded-xl bg-[#FD6D3F] flex items-center justify-center shadow-lg shadow-brand-primary/20">
+          <div className="w-9 h-9 rounded-xl bg-brand-primary flex items-center justify-center shadow-lg shadow-brand-primary/20">
             <div className="w-5 h-5 rounded-full border-2 border-white/90" />
           </div>
           <span className="font-onest font-extrabold text-2xl text-[#1F232A] tracking-tight">
