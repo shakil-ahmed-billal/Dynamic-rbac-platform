@@ -5,6 +5,7 @@ export interface IPermission {
   id: string;
   name: string;
   slug: string;
+  action: string;
   moduleId: string;
   module: {
     name: string;
