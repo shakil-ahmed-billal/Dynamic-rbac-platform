@@ -60,7 +60,7 @@ const RegisterPage = () => {
 
         {/* Register Card */}
         <div className="w-full max-w-[480px] my-12 animate-fade-in">
-          <div className="bg-white p-8 md:p-10 rounded-[32px] shadow-[0px_4px_30px_rgba(0,0,0,0.03),0px_20px_60px_rgba(194,194,194,0.1)] border border-gray-50">
+          <div className="bg-white p-8 md:p-10 rounded-[32px] shadow-[0px_4px_30px_rgba(0,0,0,0.03),0px_20px_60px_rgba(194,194,194,0.1)]  border-8 border-black/0.4">
             <div className="text-center mb-10">
               <h1 className="text-[32px] font-bold font-onest text-[#1F232A] mb-2 tracking-tight">
                 Create Account
@@ -229,12 +229,12 @@ const RegisterPage = () => {
           />
 
           {/* Dashboard Mockup Overlay */}
-                    <div className="absolute right-0 w-full max-w-[600px] aspect-[1.3] rounded-l-3xl overflow-hidden shadow-2xl animate-fade-up">
+                    <div className="absolute right-0 w-full max-w-[450px] h-[800px] aspect-[1.3] rounded-l-3xl overflow-hidden shadow-2xl animate-fade-up border-l-8 border-t-8 border-b-8 border-black/20">
                       <Image
                         src="/images/dashboard.webp"
                         alt="Dashboard Mockup"
                         fill
-                        className="object-cover"
+                        className="object-cover object-left"
                       />
                     </div>
         </div>
